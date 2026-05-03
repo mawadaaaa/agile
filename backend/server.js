@@ -15,17 +15,25 @@ app.use(express.static(path.join(__dirname, '../frontend')));
 const users = [
     { username: 'admin', password: '123', role: 'admin' },
     { username: 'student', password: '123', role: 'student' }
-]; // { username, password, role: 'admin' | 'student' }
-const courses = [
-    { id: 1, title: 'Introduction to Software Engineering', description: 'Basic software principles.' },
-    { id: 2, title: 'Data Structures', description: 'Learn about trees, graphs, and arrays.' }
-];
-const staff = [
-    { id: 1, name: 'Dr. Alice', role: 'Professor', department: 'CS' }
 ];
 
-let courseIdCounter = 3;
-let staffIdCounter = 2;
+const courses = [
+    { id: 1, title: 'Software Engineering', description: 'Learn the fundamentals of the software development life cycle, agile methodologies, and project management.', icon: '💻', instructor: 'Dr. Alice Smith', credits: 3, schedule: 'Mon/Wed 10:00 AM' },
+    { id: 2, title: 'Data Structures', description: 'Deep dive into trees, graphs, sorting algorithms, and dynamic programming techniques.', icon: '🌳', instructor: 'Prof. John Doe', credits: 4, schedule: 'Tue/Thu 1:00 PM' },
+    { id: 3, title: 'Web Development', description: 'Master HTML, CSS, and modern JavaScript to build interactive user interfaces.', icon: '🌐', instructor: 'Jane Developer', credits: 3, schedule: 'Mon/Wed 2:00 PM' },
+    { id: 4, title: 'Database Systems', description: 'Introduction to relational algebra, SQL, and robust database design principles.', icon: '🗄️', instructor: 'Dr. Data', credits: 3, schedule: 'Fri 9:00 AM' },
+    { id: 5, title: 'Artificial Intelligence', description: 'Explore machine learning, neural networks, and natural language processing concepts.', icon: '🤖', instructor: 'Dr. Turing', credits: 4, schedule: 'Tue/Thu 10:00 AM' },
+    { id: 6, title: 'Cybersecurity Basics', description: 'Learn about encryption, network security, and common vulnerabilities in modern systems.', icon: '🛡️', instructor: 'Bob Hacker', credits: 3, schedule: 'Mon 3:00 PM' }
+];
+
+const staff = [
+    { id: 1, name: 'Dr. Alice Smith', role: 'Professor', department: 'Software Engineering' },
+    { id: 2, name: 'Prof. John Doe', role: 'Professor', department: 'Computer Science' },
+    { id: 3, name: 'Jane Developer', role: 'Teaching Assistant', department: 'Web Technologies' }
+];
+
+let courseIdCounter = 7;
+let staffIdCounter = 4;
 
 // 1. User Registration & Login (AGILE-30)
 app.post('/api/register', (req, res) => {
@@ -47,14 +55,22 @@ app.post('/api/login', (req, res) => {
     res.json({ message: 'Login successful', user: { username: user.username, role: user.role } });
 });
 
-// 2. View Course Catalog (AGILE-7) & 3. Manage Course Catalog (AGILE-27)
+// 2 & 3. View & Manage Course Catalog (AGILE-7, AGILE-27)
 app.get('/api/courses', (req, res) => {
     res.json(courses);
 });
 
 app.post('/api/courses', (req, res) => {
-    const { title, description } = req.body;
-    const newCourse = { id: courseIdCounter++, title, description };
+    const { title, description, icon, instructor, credits, schedule } = req.body;
+    const newCourse = { 
+        id: courseIdCounter++, 
+        title, 
+        description, 
+        icon: icon || '📚', 
+        instructor: instructor || 'TBA', 
+        credits: credits || 3, 
+        schedule: schedule || 'TBA' 
+    };
     courses.push(newCourse);
     res.json(newCourse);
 });
@@ -72,5 +88,5 @@ app.post('/api/staff', (req, res) => {
 });
 
 app.listen(PORT, () => {
-    console.log(`Simple MVP Backend running on http://localhost:${PORT}`);
+    console.log(`Backend running on http://localhost:${PORT}`);
 });

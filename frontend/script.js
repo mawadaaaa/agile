@@ -1,4 +1,5 @@
 let currentUser = null;
+let allCourses = []; // Store courses globally for modal access
 
 function switchAuthTab(tab) {
     document.getElementById('login-form').style.display = tab === 'login' ? 'block' : 'none';
@@ -90,9 +91,20 @@ function showView(viewId) {
 async function fetchCourses() {
     try {
         const res = await fetch('/api/courses');
-        const courses = await res.json();
-        const list = document.getElementById('courses-list');
-        list.innerHTML = courses.map(c => `<li><strong>${c.title}</strong>${c.description}</li>`).join('');
+        allCourses = await res.json();
+        const grid = document.getElementById('courses-grid');
+        
+        grid.innerHTML = allCourses.map(c => `
+            <div class="course-card" onclick="openCourseModal(${c.id})">
+                <div class="card-icon">${c.icon}</div>
+                <h4>${c.title}</h4>
+                <p>${c.description}</p>
+                <div class="card-footer">
+                    <span>👨‍🏫 ${c.instructor}</span>
+                    <span>⭐ ${c.credits} Credits</span>
+                </div>
+            </div>
+        `).join('');
     } catch (err) {
         console.error('Failed to fetch courses', err);
     }
@@ -101,21 +113,53 @@ async function fetchCourses() {
 async function addCourse() {
     const title = document.getElementById('course-title').value;
     const description = document.getElementById('course-desc').value;
+    const icon = document.getElementById('course-icon').value;
+    const instructor = document.getElementById('course-instructor').value;
+    const credits = document.getElementById('course-credits').value;
+    const schedule = document.getElementById('course-schedule').value;
+    
     if (!title) return;
     
     try {
         await fetch('/api/courses', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ title, description })
+            body: JSON.stringify({ title, description, icon, instructor, credits, schedule })
         });
         
+        // Reset form
         document.getElementById('course-title').value = '';
         document.getElementById('course-desc').value = '';
+        document.getElementById('course-icon').value = '';
+        document.getElementById('course-instructor').value = '';
+        document.getElementById('course-credits').value = '3';
+        document.getElementById('course-schedule').value = '';
+        
         fetchCourses();
     } catch (err) {
         console.error('Failed to add course', err);
     }
+}
+
+// Course Modal Logic
+function openCourseModal(courseId) {
+    const course = allCourses.find(c => c.id === courseId);
+    if (!course) return;
+
+    document.getElementById('modal-icon').textContent = course.icon;
+    document.getElementById('modal-title').textContent = course.title;
+    document.getElementById('modal-desc').textContent = course.description;
+    document.getElementById('modal-instructor').textContent = course.instructor;
+    document.getElementById('modal-credits').textContent = course.credits;
+    document.getElementById('modal-schedule').textContent = course.schedule;
+
+    document.getElementById('course-modal').style.display = 'flex';
+}
+
+function closeModal(event) {
+    // If event is passed, check if we clicked outside the modal content
+    if (event && event.target.id !== 'course-modal') return;
+    document.getElementById('course-modal').style.display = 'none';
 }
 
 // 4. Staff (AGILE-28)
