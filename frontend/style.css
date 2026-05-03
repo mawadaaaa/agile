@@ -369,15 +369,89 @@ button:hover {
     font-size: 1.05rem;
 }
 
-/* Staff List styling adjustments */
-.list li {
-    background: white;
-    padding: 20px;
-    margin-bottom: 12px;
-    border-radius: 12px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.03);
-    border: 1px solid #f1f5f9;
+/* Search Bar */
+.search-bar-container {
+    margin-bottom: 30px;
 }
-.list li strong {
-    color: #0ea5e9;
+
+#course-search {
+    width: 100%;
+    max-width: 500px;
+    padding: 14px 20px;
+    font-size: 1rem;
+    border-radius: 30px;
+    border: 1px solid #cbd5e1;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.02);
+}
+
+/* Admin Tables */
+.table-container {
+    overflow-x: auto;
+    margin-top: 25px;
+    border-radius: 12px;
+    border: 1px solid #e2e8f0;
+}
+
+.admin-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: white;
+    text-align: left;
+}
+
+.admin-table th {
+    background: #f8fafc;
+    padding: 15px 20px;
+    font-weight: 600;
+    color: #475569;
+    border-bottom: 2px solid #e2e8f0;
+}
+
+.admin-table td {
+    padding: 15px 20px;
+    border-bottom: 1px solid #e2e8f0;
+    color: #334155;
+}
+
+.admin-table tr:last-child td {
+    border-bottom: none;
+}
+
+/* Action Buttons */
+.action-btn {
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    margin-right: 8px;
+    width: auto;
+    display: inline-block;
+}
+
+.action-btn.edit {
+    background: #f59e0b;
+}
+
+.action-btn.edit:hover {
+    background: #d97706;
+}
+
+.action-btn.delete {
+    background: #ef4444;
+}
+
+.action-btn.delete:hover {
+    background: #dc2626;
+}
+
+.cancel-btn {
+    background: #94a3b8;
+    width: auto;
+    margin-top: 15px;
+    padding: 10px 24px;
+    margin-left: 10px;
+}
+
+.cancel-btn:hover {
+    background: #64748b;
 }

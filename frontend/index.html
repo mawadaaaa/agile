@@ -45,7 +45,8 @@
             </div>
             <div class="nav-links">
                 <button onclick="showView('courses')">Course Catalog</button>
-                <button id="nav-staff" onclick="showView('staff')" style="display:none;">Manage Staff</button>
+                <button onclick="showView('staff-dir')">Staff Directory</button>
+                <button id="nav-admin" onclick="showView('admin')" style="display:none;">Admin Dashboard</button>
                 <button onclick="logout()" class="logout-btn">Logout</button>
             </div>
         </nav>
@@ -58,38 +59,104 @@
                     <p>Browse our selection of premium courses.</p>
                 </div>
 
-                <div id="admin-course-controls" class="admin-panel" style="display:none;">
-                    <h4>➕ Add New Course</h4>
-                    <div class="form-grid">
-                        <input type="text" id="course-title" placeholder="Course Title">
-                        <input type="text" id="course-icon" placeholder="Icon Emoji (e.g. 💻)">
-                        <input type="text" id="course-desc" placeholder="Short Description">
-                        <input type="text" id="course-instructor" placeholder="Instructor Name">
-                        <input type="number" id="course-credits" placeholder="Credits (e.g. 3)" value="3">
-                        <input type="text" id="course-schedule" placeholder="Schedule (e.g. Mon 10AM)">
-                    </div>
-                    <button onclick="addCourse()" class="add-btn">Add Course</button>
+                <div class="search-bar-container">
+                    <input type="text" id="course-search" placeholder="Search by course name or code..." onkeyup="filterCourses()">
                 </div>
-                
+
                 <div id="courses-grid" class="cards-grid"></div>
             </div>
 
-            <!-- Staff View -->
-            <div id="staff-view" class="view" style="display:none;">
+            <!-- Staff Directory View (Public) -->
+            <div id="staff-dir-view" class="view" style="display:none;">
                 <div class="section-header">
-                    <h3>Manage Staff Profiles</h3>
+                    <h3>Staff Directory</h3>
+                    <p>Meet our faculty and teaching assistants.</p>
+                </div>
+                <div id="staff-dir-grid" class="cards-grid"></div>
+            </div>
+
+            <!-- Admin Dashboard View -->
+            <div id="admin-view" class="view" style="display:none;">
+                <div class="section-header">
+                    <h3>Admin Dashboard</h3>
+                    <p>Manage courses and staff members.</p>
                 </div>
 
+                <!-- Admin Courses Section -->
                 <div class="admin-panel">
-                    <h4>➕ Add New Staff</h4>
-                    <div class="form-grid">
-                        <input type="text" id="staff-name" placeholder="Staff Name">
-                        <input type="text" id="staff-role" placeholder="Role (e.g. Professor)">
-                        <input type="text" id="staff-dept" placeholder="Department">
+                    <h4>📚 Manage Courses</h4>
+                    
+                    <form id="course-form" class="admin-form" onsubmit="saveCourse(event)">
+                        <input type="hidden" id="course-id">
+                        <div class="form-grid">
+                            <input type="text" id="course-title" placeholder="Course Title" required>
+                            <input type="text" id="course-code" placeholder="Course Code (e.g. CS101)" required>
+                            <input type="text" id="course-dept" placeholder="Department">
+                            <input type="text" id="course-icon" placeholder="Icon Emoji (e.g. 💻)">
+                            <input type="text" id="course-instructor" placeholder="Instructor Name">
+                            <input type="number" id="course-credits" placeholder="Credits (e.g. 3)" value="3" required>
+                            <input type="text" id="course-schedule" placeholder="Schedule (e.g. Mon 10AM)">
+                            <input type="text" id="course-prereq" placeholder="Prerequisites">
+                        </div>
+                        <input type="text" id="course-desc" placeholder="Full Description" style="margin-top:15px;">
+                        <button type="submit" id="course-submit-btn" class="add-btn">Add Course</button>
+                        <button type="button" class="cancel-btn" onclick="resetCourseForm()" style="display:none;" id="course-cancel-btn">Cancel</button>
+                    </form>
+
+                    <div class="table-container">
+                        <table class="admin-table">
+                            <thead>
+                                <tr>
+                                    <th>Code</th>
+                                    <th>Title</th>
+                                    <th>Credits</th>
+                                    <th>Instructor</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="admin-courses-tbody"></tbody>
+                        </table>
                     </div>
-                    <button onclick="addStaff()" class="add-btn">Add Staff</button>
                 </div>
-                <ul id="staff-list" class="list"></ul>
+
+                <!-- Admin Staff Section -->
+                <div class="admin-panel" style="margin-top: 40px;">
+                    <h4>👨‍🏫 Manage Staff</h4>
+                    
+                    <form id="staff-form" class="admin-form" onsubmit="saveStaff(event)">
+                        <input type="hidden" id="staff-id">
+                        <div class="form-grid">
+                            <input type="text" id="staff-name" placeholder="Staff Name" required>
+                            <input type="email" id="staff-email" placeholder="Email Address">
+                            <select id="staff-role" required>
+                                <option value="" disabled selected>Select Role</option>
+                                <option value="Professor">Professor</option>
+                                <option value="Teaching Assistant">Teaching Assistant</option>
+                                <option value="Admin">Admin</option>
+                            </select>
+                            <input type="text" id="staff-dept" placeholder="Department">
+                            <input type="text" id="staff-office" placeholder="Office Hours">
+                            <input type="text" id="staff-contact" placeholder="Contact Info (Room)">
+                            <input type="text" id="staff-courses" placeholder="Assigned Courses (Comma separated)">
+                        </div>
+                        <button type="submit" id="staff-submit-btn" class="add-btn">Add Staff</button>
+                        <button type="button" class="cancel-btn" onclick="resetStaffForm()" style="display:none;" id="staff-cancel-btn">Cancel</button>
+                    </form>
+
+                    <div class="table-container">
+                        <table class="admin-table">
+                            <thead>
+                                <tr>
+                                    <th>Name</th>
+                                    <th>Role</th>
+                                    <th>Department</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="admin-staff-tbody"></tbody>
+                        </table>
+                    </div>
+                </div>
             </div>
         </main>
     </div>
@@ -108,6 +175,14 @@
                     <div class="info-item">
                         <strong>Instructor</strong>
                         <span id="modal-instructor"></span>
+                    </div>
+                    <div class="info-item">
+                        <strong>Department</strong>
+                        <span id="modal-department"></span>
+                    </div>
+                    <div class="info-item">
+                        <strong>Prerequisites</strong>
+                        <span id="modal-prerequisites"></span>
                     </div>
                     <div class="info-item">
                         <strong>Credits</strong>

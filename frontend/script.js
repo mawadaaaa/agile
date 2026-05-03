@@ -1,5 +1,6 @@
 let currentUser = null;
-let allCourses = []; // Store courses globally for modal access
+let allCourses = []; 
+let allStaff = [];
 
 function switchAuthTab(tab) {
     document.getElementById('login-form').style.display = tab === 'login' ? 'block' : 'none';
@@ -9,7 +10,7 @@ function switchAuthTab(tab) {
     document.getElementById('auth-error').textContent = '';
 }
 
-// 1. Auth (AGILE-30)
+// 1. Auth
 document.getElementById('login-form').addEventListener('submit', async (e) => {
     e.preventDefault();
     const username = document.getElementById('login-user').value;
@@ -57,13 +58,10 @@ function loginSuccess(user) {
     document.getElementById('app-section').style.display = 'block';
     document.getElementById('current-user-role').textContent = `(${user.role})`;
     
-    // Toggle Admin controls
     if (user.role === 'admin') {
-        document.getElementById('admin-course-controls').style.display = 'block';
-        document.getElementById('nav-staff').style.display = 'inline-block';
+        document.getElementById('nav-admin').style.display = 'inline-block';
     } else {
-        document.getElementById('admin-course-controls').style.display = 'none';
-        document.getElementById('nav-staff').style.display = 'none';
+        document.getElementById('nav-admin').style.display = 'none';
     }
     
     showView('courses');
@@ -80,76 +78,62 @@ function logout() {
 
 function showView(viewId) {
     document.getElementById('courses-view').style.display = 'none';
-    document.getElementById('staff-view').style.display = 'none';
+    document.getElementById('staff-dir-view').style.display = 'none';
+    document.getElementById('admin-view').style.display = 'none';
+    
     document.getElementById(`${viewId}-view`).style.display = 'block';
     
     if (viewId === 'courses') fetchCourses();
-    if (viewId === 'staff') fetchStaff();
+    if (viewId === 'staff-dir') fetchStaffDir();
+    if (viewId === 'admin') fetchAdminData();
 }
 
-// 2 & 3. Courses (AGILE-7, AGILE-27)
+// ================= COURSES VIEW =================
+
 async function fetchCourses() {
     try {
         const res = await fetch('/api/courses');
         allCourses = await res.json();
-        const grid = document.getElementById('courses-grid');
-        
-        grid.innerHTML = allCourses.map(c => `
-            <div class="course-card" onclick="openCourseModal(${c.id})">
-                <div class="card-icon">${c.icon}</div>
-                <h4>${c.title}</h4>
-                <p>${c.description}</p>
-                <div class="card-footer">
-                    <span>👨‍🏫 ${c.instructor}</span>
-                    <span>⭐ ${c.credits} Credits</span>
-                </div>
-            </div>
-        `).join('');
+        renderCoursesGrid(allCourses);
     } catch (err) {
         console.error('Failed to fetch courses', err);
     }
 }
 
-async function addCourse() {
-    const title = document.getElementById('course-title').value;
-    const description = document.getElementById('course-desc').value;
-    const icon = document.getElementById('course-icon').value;
-    const instructor = document.getElementById('course-instructor').value;
-    const credits = document.getElementById('course-credits').value;
-    const schedule = document.getElementById('course-schedule').value;
-    
-    if (!title) return;
-    
-    try {
-        await fetch('/api/courses', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ title, description, icon, instructor, credits, schedule })
-        });
-        
-        // Reset form
-        document.getElementById('course-title').value = '';
-        document.getElementById('course-desc').value = '';
-        document.getElementById('course-icon').value = '';
-        document.getElementById('course-instructor').value = '';
-        document.getElementById('course-credits').value = '3';
-        document.getElementById('course-schedule').value = '';
-        
-        fetchCourses();
-    } catch (err) {
-        console.error('Failed to add course', err);
-    }
+function renderCoursesGrid(courses) {
+    const grid = document.getElementById('courses-grid');
+    grid.innerHTML = courses.map(c => `
+        <div class="course-card" onclick="openCourseModal(${c.id})">
+            <div class="card-icon">${c.icon}</div>
+            <h4>[${c.code}] ${c.title}</h4>
+            <p>${c.description}</p>
+            <div class="card-footer">
+                <span>👨‍🏫 ${c.instructor}</span>
+                <span>⭐ ${c.credits} Credits</span>
+            </div>
+        </div>
+    `).join('');
 }
 
-// Course Modal Logic
+function filterCourses() {
+    const query = document.getElementById('course-search').value.toLowerCase();
+    const filtered = allCourses.filter(c => 
+        c.title.toLowerCase().includes(query) || 
+        c.code.toLowerCase().includes(query)
+    );
+    renderCoursesGrid(filtered);
+}
+
 function openCourseModal(courseId) {
     const course = allCourses.find(c => c.id === courseId);
     if (!course) return;
 
     document.getElementById('modal-icon').textContent = course.icon;
-    document.getElementById('modal-title').textContent = course.title;
+    document.getElementById('modal-title').textContent = `[${course.code}] ${course.title}`;
     document.getElementById('modal-desc').textContent = course.description;
     document.getElementById('modal-instructor').textContent = course.instructor;
+    document.getElementById('modal-department').textContent = course.department || 'N/A';
+    document.getElementById('modal-prerequisites').textContent = course.prerequisites || 'None';
     document.getElementById('modal-credits').textContent = course.credits;
     document.getElementById('modal-schedule').textContent = course.schedule;
 
@@ -157,41 +141,215 @@ function openCourseModal(courseId) {
 }
 
 function closeModal(event) {
-    // If event is passed, check if we clicked outside the modal content
     if (event && event.target.id !== 'course-modal') return;
     document.getElementById('course-modal').style.display = 'none';
 }
 
-// 4. Staff (AGILE-28)
-async function fetchStaff() {
+// ================= STAFF DIRECTORY VIEW =================
+
+async function fetchStaffDir() {
     try {
         const res = await fetch('/api/staff');
-        const staff = await res.json();
-        const list = document.getElementById('staff-list');
-        list.innerHTML = staff.map(s => `<li><strong>${s.name}</strong>${s.role} - ${s.department}</li>`).join('');
+        allStaff = await res.json();
+        const grid = document.getElementById('staff-dir-grid');
+        grid.innerHTML = allStaff.map(s => `
+            <div class="course-card">
+                <h4>${s.name}</h4>
+                <p style="margin-bottom: 5px;"><strong>${s.role}</strong> - ${s.department}</p>
+                <div style="font-size: 0.9em; color: #64748b; margin-bottom: 15px; flex-grow: 1;">
+                    <div>📧 ${s.email || 'N/A'}</div>
+                    <div>📍 ${s.contact || 'N/A'}</div>
+                    <div>🕒 ${s.office_hours || 'N/A'}</div>
+                </div>
+                <div class="card-footer">
+                    <span>📚 ${s.assigned_courses || 'None'}</span>
+                </div>
+            </div>
+        `).join('');
     } catch (err) {
         console.error('Failed to fetch staff', err);
     }
 }
 
-async function addStaff() {
-    const name = document.getElementById('staff-name').value;
-    const role = document.getElementById('staff-role').value;
-    const department = document.getElementById('staff-dept').value;
-    if (!name) return;
-    
+// ================= ADMIN DASHBOARD =================
+
+async function fetchAdminData() {
     try {
-        await fetch('/api/staff', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ name, role, department })
-        });
+        const [resCourses, resStaff] = await Promise.all([
+            fetch('/api/courses'),
+            fetch('/api/staff')
+        ]);
+        allCourses = await resCourses.json();
+        allStaff = await resStaff.json();
         
-        document.getElementById('staff-name').value = '';
-        document.getElementById('staff-role').value = '';
-        document.getElementById('staff-dept').value = '';
-        fetchStaff();
+        renderAdminCourses();
+        renderAdminStaff();
     } catch (err) {
-        console.error('Failed to add staff', err);
+        console.error('Failed to fetch admin data', err);
+    }
+}
+
+// Admin Courses
+function renderAdminCourses() {
+    const tbody = document.getElementById('admin-courses-tbody');
+    tbody.innerHTML = allCourses.map(c => `
+        <tr>
+            <td>${c.code}</td>
+            <td>${c.title}</td>
+            <td>${c.credits}</td>
+            <td>${c.instructor}</td>
+            <td>
+                <button class="action-btn edit" onclick="editCourseBtn(${c.id})">Edit</button>
+                <button class="action-btn delete" onclick="deleteCourseBtn(${c.id})">Delete</button>
+            </td>
+        </tr>
+    `).join('');
+}
+
+async function saveCourse(e) {
+    e.preventDefault();
+    const id = document.getElementById('course-id').value;
+    
+    const payload = {
+        title: document.getElementById('course-title').value,
+        code: document.getElementById('course-code').value,
+        department: document.getElementById('course-dept').value,
+        prerequisites: document.getElementById('course-prereq').value,
+        description: document.getElementById('course-desc').value,
+        icon: document.getElementById('course-icon').value,
+        instructor: document.getElementById('course-instructor').value,
+        credits: parseInt(document.getElementById('course-credits').value) || 3,
+        schedule: document.getElementById('course-schedule').value
+    };
+
+    const method = id ? 'PUT' : 'POST';
+    const url = id ? `/api/courses/${id}` : '/api/courses';
+
+    try {
+        await fetch(url, {
+            method,
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        resetCourseForm();
+        fetchAdminData();
+    } catch (err) {
+        console.error('Failed to save course', err);
+    }
+}
+
+function editCourseBtn(id) {
+    const c = allCourses.find(c => c.id === id);
+    if (!c) return;
+    
+    document.getElementById('course-id').value = c.id;
+    document.getElementById('course-title').value = c.title;
+    document.getElementById('course-code').value = c.code || '';
+    document.getElementById('course-dept').value = c.department || '';
+    document.getElementById('course-prereq').value = c.prerequisites || '';
+    document.getElementById('course-desc').value = c.description;
+    document.getElementById('course-icon').value = c.icon;
+    document.getElementById('course-instructor').value = c.instructor;
+    document.getElementById('course-credits').value = c.credits;
+    document.getElementById('course-schedule').value = c.schedule;
+    
+    document.getElementById('course-submit-btn').textContent = 'Update Course';
+    document.getElementById('course-cancel-btn').style.display = 'inline-block';
+}
+
+function resetCourseForm() {
+    document.getElementById('course-form').reset();
+    document.getElementById('course-id').value = '';
+    document.getElementById('course-submit-btn').textContent = 'Add Course';
+    document.getElementById('course-cancel-btn').style.display = 'none';
+}
+
+async function deleteCourseBtn(id) {
+    if (!confirm('Are you sure you want to delete this course?')) return;
+    try {
+        await fetch(`/api/courses/${id}`, { method: 'DELETE' });
+        fetchAdminData();
+    } catch (err) {
+        console.error('Failed to delete course', err);
+    }
+}
+
+// Admin Staff
+function renderAdminStaff() {
+    const tbody = document.getElementById('admin-staff-tbody');
+    tbody.innerHTML = allStaff.map(s => `
+        <tr>
+            <td>${s.name}</td>
+            <td>${s.role}</td>
+            <td>${s.department}</td>
+            <td>
+                <button class="action-btn edit" onclick="editStaffBtn(${s.id})">Edit</button>
+                <button class="action-btn delete" onclick="deleteStaffBtn(${s.id})">Delete</button>
+            </td>
+        </tr>
+    `).join('');
+}
+
+async function saveStaff(e) {
+    e.preventDefault();
+    const id = document.getElementById('staff-id').value;
+    
+    const payload = {
+        name: document.getElementById('staff-name').value,
+        role: document.getElementById('staff-role').value,
+        department: document.getElementById('staff-dept').value,
+        email: document.getElementById('staff-email').value,
+        office_hours: document.getElementById('staff-office').value,
+        contact: document.getElementById('staff-contact').value,
+        assigned_courses: document.getElementById('staff-courses').value
+    };
+
+    const method = id ? 'PUT' : 'POST';
+    const url = id ? `/api/staff/${id}` : '/api/staff';
+
+    try {
+        await fetch(url, {
+            method,
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        resetStaffForm();
+        fetchAdminData();
+    } catch (err) {
+        console.error('Failed to save staff', err);
+    }
+}
+
+function editStaffBtn(id) {
+    const s = allStaff.find(s => s.id === id);
+    if (!s) return;
+    
+    document.getElementById('staff-id').value = s.id;
+    document.getElementById('staff-name').value = s.name;
+    document.getElementById('staff-role').value = s.role;
+    document.getElementById('staff-dept').value = s.department || '';
+    document.getElementById('staff-email').value = s.email || '';
+    document.getElementById('staff-office').value = s.office_hours || '';
+    document.getElementById('staff-contact').value = s.contact || '';
+    document.getElementById('staff-courses').value = s.assigned_courses || '';
+    
+    document.getElementById('staff-submit-btn').textContent = 'Update Staff';
+    document.getElementById('staff-cancel-btn').style.display = 'inline-block';
+}
+
+function resetStaffForm() {
+    document.getElementById('staff-form').reset();
+    document.getElementById('staff-id').value = '';
+    document.getElementById('staff-submit-btn').textContent = 'Add Staff';
+    document.getElementById('staff-cancel-btn').style.display = 'none';
+}
+
+async function deleteStaffBtn(id) {
+    if (!confirm('Are you sure you want to delete this staff member?')) return;
+    try {
+        await fetch(`/api/staff/${id}`, { method: 'DELETE' });
+        fetchAdminData();
+    } catch (err) {
+        console.error('Failed to delete staff', err);
     }
 }
