@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UMS MVP</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <!-- Auth Section -->
+    <div id="auth-section" class="active-view">
+        <div class="auth-box">
+            <h2>Welcome to UMS</h2>
+            <div class="tabs">
+                <button id="tab-login" class="active-tab" onclick="switchAuthTab('login')">Login</button>
+                <button id="tab-register" onclick="switchAuthTab('register')">Register</button>
+            </div>
+            
+            <form id="login-form">
+                <input type="text" id="login-user" placeholder="Username" required>
+                <input type="password" id="login-pass" placeholder="Password" required>
+                <button type="submit">Login</button>
+            </form>
+
+            <form id="register-form" style="display:none;">
+                <input type="text" id="reg-user" placeholder="Username" required>
+                <input type="password" id="reg-pass" placeholder="Password" required>
+                <select id="reg-role">
+                    <option value="student">Student</option>
+                    <option value="admin">Admin</option>
+                </select>
+                <button type="submit">Register</button>
+            </form>
+            <div id="auth-error" class="error-msg"></div>
+        </div>
+    </div>
+
+    <!-- App Section -->
+    <div id="app-section" style="display:none;">
+        <nav class="navbar">
+            <h2>UMS <span id="current-user-role"></span></h2>
+            <div class="nav-links">
+                <button onclick="showView('courses')">Course Catalog</button>
+                <button id="nav-staff" onclick="showView('staff')" style="display:none;">Manage Staff</button>
+                <button onclick="logout()" class="logout-btn">Logout</button>
+            </div>
+        </nav>
+
+        <main class="content">
+            <!-- Courses View -->
+            <div id="courses-view" class="view">
+                <h3>Course Catalog</h3>
+                <div id="admin-course-controls" style="display:none; margin-bottom: 20px; background: white; padding: 15px; border-radius: 4px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
+                    <h4>Add New Course</h4>
+                    <div style="display:flex; gap:10px;">
+                        <input type="text" id="course-title" placeholder="Course Title" style="margin-bottom:0;">
+                        <input type="text" id="course-desc" placeholder="Course Description" style="margin-bottom:0;">
+                        <button onclick="addCourse()" style="width:150px; margin-bottom:0;">Add Course</button>
+                    </div>
+                </div>
+                <ul id="courses-list" class="list"></ul>
+            </div>
+
+            <!-- Staff View -->
+            <div id="staff-view" class="view" style="display:none;">
+                <h3>Manage Staff Profiles</h3>
+                <div style="margin-bottom: 20px; background: white; padding: 15px; border-radius: 4px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
+                    <h4>Add New Staff</h4>
+                    <div style="display:flex; gap:10px;">
+                        <input type="text" id="staff-name" placeholder="Staff Name" style="margin-bottom:0;">
+                        <input type="text" id="staff-role" placeholder="Role (e.g. Professor)" style="margin-bottom:0;">
+                        <input type="text" id="staff-dept" placeholder="Department" style="margin-bottom:0;">
+                        <button onclick="addStaff()" style="width:150px; margin-bottom:0;">Add Staff</button>
+                    </div>
+                </div>
+                <ul id="staff-list" class="list"></ul>
+            </div>
+        </main>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
