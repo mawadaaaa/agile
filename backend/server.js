@@ -34,6 +34,9 @@ const staff = [
 
 let courseIdCounter = 7;
 let staffIdCounter = 4;
+let announcementIdCounter = 1;
+
+const announcements = [];
 
 // 1. User Registration & Login (AGILE-30)
 app.post('/api/register', (req, res) => {
@@ -133,6 +136,35 @@ app.delete('/api/staff/:id', (req, res) => {
     
     staff.splice(index, 1);
     res.json({ message: 'Staff deleted' });
+});
+
+// 5. Post Announcements (AGILE-21)
+app.get('/api/announcements', (req, res) => {
+    // Sort announcements by date, newest first
+    const sorted = [...announcements].sort((a, b) => new Date(b.date) - new Date(a.date));
+    res.json(sorted);
+});
+
+app.post('/api/announcements', (req, res) => {
+    const { title, body, postedBy } = req.body;
+    const newAnnouncement = {
+        id: announcementIdCounter++,
+        title,
+        body,
+        date: new Date().toISOString(),
+        postedBy: postedBy || 'Admin'
+    };
+    announcements.push(newAnnouncement);
+    res.json(newAnnouncement);
+});
+
+app.delete('/api/announcements/:id', (req, res) => {
+    const announcementId = parseInt(req.params.id);
+    const index = announcements.findIndex(a => a.id === announcementId);
+    if (index === -1) return res.status(404).json({ error: 'Announcement not found' });
+    
+    announcements.splice(index, 1);
+    res.json({ message: 'Announcement deleted' });
 });
 
 app.listen(PORT, () => {

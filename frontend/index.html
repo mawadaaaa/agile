@@ -44,6 +44,7 @@
                 <h2>UMS <span id="current-user-role"></span></h2>
             </div>
             <div class="nav-links">
+                <button onclick="showView('announcements')">Announcements</button>
                 <button onclick="showView('courses')">Course Catalog</button>
                 <button onclick="showView('staff-dir')">Staff Directory</button>
                 <button id="nav-admin" onclick="showView('admin')" style="display:none;">Admin Dashboard</button>
@@ -64,6 +65,15 @@
                 </div>
 
                 <div id="courses-grid" class="cards-grid"></div>
+            </div>
+
+            <!-- Announcements View (Public) -->
+            <div id="announcements-view" class="view" style="display:none;">
+                <div class="section-header">
+                    <h3>Announcements</h3>
+                    <p>Stay up to date with the latest news.</p>
+                </div>
+                <div id="announcements-grid" class="cards-grid"></div>
             </div>
 
             <!-- Staff Directory View (Public) -->
@@ -154,6 +164,33 @@
                                 </tr>
                             </thead>
                             <tbody id="admin-staff-tbody"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Admin Announcements Section -->
+                <div class="admin-panel" style="margin-top: 40px;">
+                    <h4>📢 Manage Announcements</h4>
+                    
+                    <form id="announcement-form" class="admin-form" onsubmit="saveAnnouncement(event)">
+                        <div class="form-grid">
+                            <input type="text" id="announcement-title" placeholder="Announcement Title" required>
+                        </div>
+                        <textarea id="announcement-body" placeholder="Announcement Details" required style="width: 100%; margin-top: 15px; padding: 10px; border-radius: 8px; border: 1px solid #cbd5e1; font-family: inherit; resize: vertical; min-height: 80px;"></textarea>
+                        <button type="submit" id="announcement-submit-btn" class="add-btn" style="margin-top: 15px;">Post Announcement</button>
+                    </form>
+
+                    <div class="table-container">
+                        <table class="admin-table">
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Title</th>
+                                    <th>Posted By</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="admin-announcements-tbody"></tbody>
                         </table>
                     </div>
                 </div>

@@ -1,6 +1,7 @@
 let currentUser = null;
 let allCourses = []; 
 let allStaff = [];
+let allAnnouncements = [];
 
 function switchAuthTab(tab) {
     document.getElementById('login-form').style.display = tab === 'login' ? 'block' : 'none';
@@ -79,12 +80,14 @@ function logout() {
 function showView(viewId) {
     document.getElementById('courses-view').style.display = 'none';
     document.getElementById('staff-dir-view').style.display = 'none';
+    document.getElementById('announcements-view').style.display = 'none';
     document.getElementById('admin-view').style.display = 'none';
     
     document.getElementById(`${viewId}-view`).style.display = 'block';
     
     if (viewId === 'courses') fetchCourses();
     if (viewId === 'staff-dir') fetchStaffDir();
+    if (viewId === 'announcements') fetchAnnouncements();
     if (viewId === 'admin') fetchAdminData();
 }
 
@@ -171,19 +174,48 @@ async function fetchStaffDir() {
     }
 }
 
+// ================= ANNOUNCEMENTS VIEW =================
+
+async function fetchAnnouncements() {
+    try {
+        const res = await fetch('/api/announcements');
+        allAnnouncements = await res.json();
+        renderAnnouncementsGrid();
+    } catch (err) {
+        console.error('Failed to fetch announcements', err);
+    }
+}
+
+function renderAnnouncementsGrid() {
+    const grid = document.getElementById('announcements-grid');
+    grid.innerHTML = allAnnouncements.map(a => `
+        <div class="course-card">
+            <h4 style="color: #0f172a; margin-bottom: 5px;">${a.title}</h4>
+            <p style="margin-top: 10px; margin-bottom: 15px; white-space: pre-wrap;">${a.body}</p>
+            <div class="card-footer" style="font-size: 0.85em; color: #64748b;">
+                <span>📅 ${new Date(a.date).toLocaleDateString()}</span>
+                <span>👤 ${a.postedBy}</span>
+            </div>
+        </div>
+    `).join('');
+}
+
 // ================= ADMIN DASHBOARD =================
 
 async function fetchAdminData() {
     try {
-        const [resCourses, resStaff] = await Promise.all([
+        const [resCourses, resStaff, resAnnouncements] = await Promise.all([
             fetch('/api/courses'),
-            fetch('/api/staff')
+            fetch('/api/staff'),
+            fetch('/api/announcements')
         ]);
         allCourses = await resCourses.json();
         allStaff = await resStaff.json();
+        allAnnouncements = await resAnnouncements.json();
         
         renderAdminCourses();
         renderAdminStaff();
+        renderAdminAnnouncements();
     } catch (err) {
         console.error('Failed to fetch admin data', err);
     }
@@ -351,5 +383,51 @@ async function deleteStaffBtn(id) {
         fetchAdminData();
     } catch (err) {
         console.error('Failed to delete staff', err);
+    }
+}
+
+// Admin Announcements
+function renderAdminAnnouncements() {
+    const tbody = document.getElementById('admin-announcements-tbody');
+    tbody.innerHTML = allAnnouncements.map(a => `
+        <tr>
+            <td>${new Date(a.date).toLocaleDateString()}</td>
+            <td>${a.title}</td>
+            <td>${a.postedBy}</td>
+            <td>
+                <button class="action-btn delete" onclick="deleteAnnouncementBtn(${a.id})">Delete</button>
+            </td>
+        </tr>
+    `).join('');
+}
+
+async function saveAnnouncement(e) {
+    e.preventDefault();
+    const payload = {
+        title: document.getElementById('announcement-title').value,
+        body: document.getElementById('announcement-body').value,
+        postedBy: currentUser.username
+    };
+
+    try {
+        await fetch('/api/announcements', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        document.getElementById('announcement-form').reset();
+        fetchAdminData();
+    } catch (err) {
+        console.error('Failed to save announcement', err);
+    }
+}
+
+async function deleteAnnouncementBtn(id) {
+    if (!confirm('Are you sure you want to delete this announcement?')) return;
+    try {
+        await fetch(`/api/announcements/${id}`, { method: 'DELETE' });
+        fetchAdminData();
+    } catch (err) {
+        console.error('Failed to delete announcement', err);
     }
 }
