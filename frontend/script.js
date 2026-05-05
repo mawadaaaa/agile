@@ -104,7 +104,7 @@ function showView(viewId) {
     if (document.getElementById('my-courses-view')) document.getElementById('my-courses-view').style.display = 'none';
     
     if (viewId === 'my-courses') {
-        document.getElementById('my-courses-view').style.display = 'flex';
+        document.getElementById('my-courses-view').style.display = 'block';
         fetchMyCourses();
         return;
     }
@@ -969,9 +969,6 @@ function renderMyCourses(myCourses, myGrades) {
     }
 }
 
-function closeMyCoursesView() {
-    document.getElementById('my-courses-view').style.display = 'none';
-}
 
 // Gradebook for Professors
 async function saveGrade(e) {

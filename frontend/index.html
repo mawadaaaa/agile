@@ -365,6 +365,33 @@
                     </div>
                 </div>
             </div>
+            <!-- My Courses & Grades View (Students only) -->
+            <div id="my-courses-view" class="view" style="display:none;">
+                <div class="section-header">
+                    <h3>My Courses & Grades</h3>
+                    <p>Track your enrollment status and academic performance.</p>
+                </div>
+
+                <div class="my-courses-container">
+                    <h4 style="color:#0f172a; margin-bottom:15px; font-size: 1.2rem;">Enrolled Courses</h4>
+                    <div id="my-courses-grid" class="cards-grid" style="margin-bottom:40px;"></div>
+
+                    <h4 style="color:#0f172a; margin-bottom:15px; font-size: 1.2rem;">Transcript (Grades)</h4>
+                    <div class="table-container">
+                        <table class="admin-table">
+                            <thead>
+                                <tr>
+                                    <th>Course</th>
+                                    <th>Assessment</th>
+                                    <th>Grade</th>
+                                    <th>Feedback</th>
+                                </tr>
+                            </thead>
+                            <tbody id="my-grades-tbody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
         </main>
     </div>
 
@@ -441,27 +468,6 @@
                         <div id="staff-modal-courses" class="courses-list"></div>
                     </div>
                 </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- My Courses & Grades View (Students only) -->
-    <div id="my-courses-view" class="modal-overlay" style="display:none;" onclick="if(event.target===this)closeMyCoursesView()">
-        <div class="modal-content" style="max-width:700px; max-height:85vh; overflow-y:auto;" onclick="event.stopPropagation()">
-            <button class="close-modal" onclick="closeMyCoursesView()">×</button>
-            <h2 style="margin-top:0;">📚 My Courses & Grades</h2>
-
-            <h4 style="color:#0f172a; margin-bottom:10px;">Enrolled Courses</h4>
-            <div id="my-courses-grid" class="cards-grid" style="margin-bottom:30px;"></div>
-
-            <h4 style="color:#0f172a; margin-bottom:10px;">Transcript (Grades)</h4>
-            <div class="table-container">
-                <table class="admin-table">
-                    <thead>
-                        <tr><th>Course</th><th>Assessment</th><th>Grade</th><th>Feedback</th></tr>
-                    </thead>
-                    <tbody id="my-grades-tbody"></tbody>
-                </table>
             </div>
         </div>
     </div>
