@@ -2,6 +2,7 @@ let currentUser = null;
 let allCourses = []; 
 let allStaff = [];
 let allAnnouncements = [];
+let allSchedules = [];
 
 function switchAuthTab(tab) {
     document.getElementById('login-form').style.display = tab === 'login' ? 'block' : 'none';
@@ -81,6 +82,7 @@ function showView(viewId) {
     document.getElementById('courses-view').style.display = 'none';
     document.getElementById('staff-dir-view').style.display = 'none';
     document.getElementById('announcements-view').style.display = 'none';
+    document.getElementById('timetable-view').style.display = 'none';
     document.getElementById('admin-view').style.display = 'none';
     
     document.getElementById(`${viewId}-view`).style.display = 'block';
@@ -88,6 +90,7 @@ function showView(viewId) {
     if (viewId === 'courses') fetchCourses();
     if (viewId === 'staff-dir') fetchStaffDir();
     if (viewId === 'announcements') fetchAnnouncements();
+    if (viewId === 'timetable') fetchTimetable();
     if (viewId === 'admin') fetchAdminData();
 }
 
@@ -263,22 +266,62 @@ function renderAnnouncementsGrid() {
     `).join('');
 }
 
+// ================= TIMETABLE VIEW =================
+
+async function fetchTimetable() {
+    try {
+        const res = await fetch('/api/schedules');
+        allSchedules = await res.json();
+        filterTimetable();
+    } catch (err) {
+        console.error('Failed to fetch schedules', err);
+    }
+}
+
+function filterTimetable() {
+    const room = document.getElementById('timetable-filter-room').value;
+    const day = document.getElementById('timetable-filter-day').value;
+    
+    const filtered = allSchedules.filter(s => {
+        return (room === '' || s.room === room) && (day === '' || s.day === day);
+    });
+    
+    renderTimetable(filtered);
+}
+
+function renderTimetable(schedules) {
+    const tbody = document.getElementById('timetable-tbody');
+    tbody.innerHTML = schedules.map(s => `
+        <tr>
+            <td>${s.room}</td>
+            <td>${s.course}</td>
+            <td>${s.day}</td>
+            <td>${s.timeSlot}</td>
+        </tr>
+    `).join('');
+}
+
 // ================= ADMIN DASHBOARD =================
 
 async function fetchAdminData() {
     try {
-        const [resCourses, resStaff, resAnnouncements] = await Promise.all([
+        const [resCourses, resStaff, resAnnouncements, resSchedules] = await Promise.all([
             fetch('/api/courses'),
             fetch('/api/staff'),
-            fetch('/api/announcements')
+            fetch('/api/announcements'),
+            fetch('/api/schedules')
         ]);
         allCourses = await resCourses.json();
         allStaff = await resStaff.json();
         allAnnouncements = await resAnnouncements.json();
+        allSchedules = await resSchedules.json();
+        
+        updateScheduleCourseDropdown();
         
         renderAdminCourses();
         renderAdminStaff();
         renderAdminAnnouncements();
+        renderAdminSchedules();
     } catch (err) {
         console.error('Failed to fetch admin data', err);
     }
@@ -492,5 +535,98 @@ async function deleteAnnouncementBtn(id) {
         fetchAdminData();
     } catch (err) {
         console.error('Failed to delete announcement', err);
+    }
+}
+
+// Admin Schedules
+function updateScheduleCourseDropdown() {
+    const select = document.getElementById('schedule-course');
+    select.innerHTML = '<option value="" disabled selected>Select Course</option>' + 
+        allCourses.map(c => `<option value="${c.title}">[${c.code}] ${c.title}</option>`).join('');
+}
+
+function renderAdminSchedules() {
+    const tbody = document.getElementById('admin-schedules-tbody');
+    tbody.innerHTML = allSchedules.map(s => `
+        <tr>
+            <td>${s.room}</td>
+            <td>${s.course}</td>
+            <td>${s.day}</td>
+            <td>${s.timeSlot}</td>
+            <td>
+                <button class="action-btn edit" onclick="editScheduleBtn(${s.id})">Edit</button>
+                <button class="action-btn delete" onclick="deleteScheduleBtn(${s.id})">Delete</button>
+            </td>
+        </tr>
+    `).join('');
+}
+
+async function saveSchedule(e) {
+    e.preventDefault();
+    const id = document.getElementById('schedule-id').value;
+    const errorDiv = document.getElementById('schedule-error');
+    errorDiv.textContent = '';
+    
+    const payload = {
+        room: document.getElementById('schedule-room').value,
+        course: document.getElementById('schedule-course').value,
+        day: document.getElementById('schedule-day').value,
+        timeSlot: document.getElementById('schedule-time').value
+    };
+
+    const method = id ? 'PUT' : 'POST';
+    const url = id ? `/api/schedules/${id}` : '/api/schedules';
+
+    try {
+        const res = await fetch(url, {
+            method,
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        
+        if (!res.ok) {
+            errorDiv.textContent = data.error || 'Failed to save schedule';
+            return;
+        }
+        
+        resetScheduleForm();
+        fetchAdminData();
+    } catch (err) {
+        console.error('Failed to save schedule', err);
+        errorDiv.textContent = 'An error occurred';
+    }
+}
+
+function editScheduleBtn(id) {
+    const s = allSchedules.find(s => s.id === id);
+    if (!s) return;
+    
+    document.getElementById('schedule-id').value = s.id;
+    document.getElementById('schedule-room').value = s.room;
+    document.getElementById('schedule-course').value = s.course;
+    document.getElementById('schedule-day').value = s.day;
+    document.getElementById('schedule-time').value = s.timeSlot;
+    
+    document.getElementById('schedule-submit-btn').textContent = 'Update Schedule';
+    document.getElementById('schedule-cancel-btn').style.display = 'inline-block';
+    document.getElementById('schedule-error').textContent = '';
+}
+
+function resetScheduleForm() {
+    document.getElementById('schedule-form').reset();
+    document.getElementById('schedule-id').value = '';
+    document.getElementById('schedule-submit-btn').textContent = 'Add Schedule';
+    document.getElementById('schedule-cancel-btn').style.display = 'none';
+    document.getElementById('schedule-error').textContent = '';
+}
+
+async function deleteScheduleBtn(id) {
+    if (!confirm('Are you sure you want to delete this schedule?')) return;
+    try {
+        await fetch(`/api/schedules/${id}`, { method: 'DELETE' });
+        fetchAdminData();
+    } catch (err) {
+        console.error('Failed to delete schedule', err);
     }
 }

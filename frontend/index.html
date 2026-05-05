@@ -47,6 +47,7 @@
                 <button onclick="showView('announcements')">Announcements</button>
                 <button onclick="showView('courses')">Course Catalog</button>
                 <button onclick="showView('staff-dir')">Staff Directory</button>
+                <button onclick="showView('timetable')">Timetable</button>
                 <button id="nav-admin" onclick="showView('admin')" style="display:none;">Admin Dashboard</button>
                 <button onclick="logout()" class="logout-btn">Logout</button>
             </div>
@@ -88,6 +89,45 @@
                 </div>
 
                 <div id="staff-dir-grid" class="cards-grid"></div>
+            </div>
+
+            <!-- Timetable View (Public) -->
+            <div id="timetable-view" class="view" style="display:none;">
+                <div class="section-header">
+                    <h3>Timetable</h3>
+                    <p>View class schedules by room and day.</p>
+                </div>
+                
+                <div class="search-bar-container" style="display: flex; gap: 10px;">
+                    <select id="timetable-filter-room" onchange="filterTimetable()" style="max-width: 200px; margin-bottom: 0;">
+                        <option value="">All Rooms</option>
+                        <option value="Room 101">Room 101</option>
+                        <option value="Lab A">Lab A</option>
+                        <option value="Auditorium">Auditorium</option>
+                    </select>
+                    <select id="timetable-filter-day" onchange="filterTimetable()" style="max-width: 200px; margin-bottom: 0;">
+                        <option value="">All Days</option>
+                        <option value="Mon">Monday</option>
+                        <option value="Tue">Tuesday</option>
+                        <option value="Wed">Wednesday</option>
+                        <option value="Thu">Thursday</option>
+                        <option value="Fri">Friday</option>
+                    </select>
+                </div>
+
+                <div class="table-container">
+                    <table class="admin-table">
+                        <thead>
+                            <tr>
+                                <th>Room</th>
+                                <th>Course</th>
+                                <th>Day</th>
+                                <th>Time</th>
+                            </tr>
+                        </thead>
+                        <tbody id="timetable-tbody"></tbody>
+                    </table>
+                </div>
             </div>
 
             <!-- Admin Dashboard View -->
@@ -196,6 +236,60 @@
                                 </tr>
                             </thead>
                             <tbody id="admin-announcements-tbody"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Admin Room Scheduling Section -->
+                <div class="admin-panel" style="margin-top: 40px;">
+                    <h4>🗓️ Schedule Classes</h4>
+                    
+                    <form id="schedule-form" class="admin-form" onsubmit="saveSchedule(event)">
+                        <input type="hidden" id="schedule-id">
+                        <div class="form-grid">
+                            <select id="schedule-room" required>
+                                <option value="" disabled selected>Select Room</option>
+                                <option value="Room 101">Room 101</option>
+                                <option value="Lab A">Lab A</option>
+                                <option value="Auditorium">Auditorium</option>
+                            </select>
+                            <select id="schedule-course" required>
+                                <option value="" disabled selected>Select Course</option>
+                            </select>
+                            <select id="schedule-day" required>
+                                <option value="" disabled selected>Select Day</option>
+                                <option value="Mon">Monday</option>
+                                <option value="Tue">Tuesday</option>
+                                <option value="Wed">Wednesday</option>
+                                <option value="Thu">Thursday</option>
+                                <option value="Fri">Friday</option>
+                            </select>
+                            <select id="schedule-time" required>
+                                <option value="" disabled selected>Select Time Slot</option>
+                                <option value="8am–10am">8am–10am</option>
+                                <option value="10am–12pm">10am–12pm</option>
+                                <option value="12pm–2pm">12pm–2pm</option>
+                                <option value="2pm–4pm">2pm–4pm</option>
+                                <option value="4pm–6pm">4pm–6pm</option>
+                            </select>
+                        </div>
+                        <div id="schedule-error" class="error-msg" style="text-align: left;"></div>
+                        <button type="submit" id="schedule-submit-btn" class="add-btn">Add Schedule</button>
+                        <button type="button" class="cancel-btn" onclick="resetScheduleForm()" style="display:none;" id="schedule-cancel-btn">Cancel</button>
+                    </form>
+
+                    <div class="table-container">
+                        <table class="admin-table">
+                            <thead>
+                                <tr>
+                                    <th>Room</th>
+                                    <th>Course</th>
+                                    <th>Day</th>
+                                    <th>Time</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="admin-schedules-tbody"></tbody>
                         </table>
                     </div>
                 </div>

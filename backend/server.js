@@ -35,8 +35,10 @@ const staff = [
 let courseIdCounter = 7;
 let staffIdCounter = 4;
 let announcementIdCounter = 1;
+let scheduleIdCounter = 1;
 
 const announcements = [];
+const schedules = [];
 
 // 1. User Registration & Login (AGILE-30)
 app.post('/api/register', (req, res) => {
@@ -172,6 +174,57 @@ app.delete('/api/announcements/:id', (req, res) => {
     
     announcements.splice(index, 1);
     res.json({ message: 'Announcement deleted' });
+});
+
+// 6. Schedule Classes (AGILE-32)
+app.get('/api/schedules', (req, res) => {
+    res.json(schedules);
+});
+
+app.post('/api/schedules', (req, res) => {
+    const { room, course, day, timeSlot } = req.body;
+    
+    // Conflict check
+    const conflict = schedules.find(s => s.room === room && s.day === day && s.timeSlot === timeSlot);
+    if (conflict) {
+        return res.status(400).json({ error: 'Room is already booked at that time.' });
+    }
+
+    const newSchedule = {
+        id: scheduleIdCounter++,
+        room,
+        course,
+        day,
+        timeSlot
+    };
+    schedules.push(newSchedule);
+    res.json(newSchedule);
+});
+
+app.put('/api/schedules/:id', (req, res) => {
+    const scheduleId = parseInt(req.params.id);
+    const index = schedules.findIndex(s => s.id === scheduleId);
+    if (index === -1) return res.status(404).json({ error: 'Schedule not found' });
+
+    const { room, course, day, timeSlot } = req.body;
+    
+    // Conflict check
+    const conflict = schedules.find(s => s.id !== scheduleId && s.room === room && s.day === day && s.timeSlot === timeSlot);
+    if (conflict) {
+        return res.status(400).json({ error: 'Room is already booked at that time.' });
+    }
+
+    schedules[index] = { ...schedules[index], room, course, day, timeSlot };
+    res.json(schedules[index]);
+});
+
+app.delete('/api/schedules/:id', (req, res) => {
+    const scheduleId = parseInt(req.params.id);
+    const index = schedules.findIndex(s => s.id === scheduleId);
+    if (index === -1) return res.status(404).json({ error: 'Schedule not found' });
+
+    schedules.splice(index, 1);
+    res.json({ message: 'Schedule deleted' });
 });
 
 app.listen(PORT, () => {
