@@ -62,10 +62,24 @@ function loginSuccess(user) {
     document.getElementById('app-section').style.display = 'block';
     document.getElementById('current-user-role').textContent = `(${user.role})`;
     
+    // Role-based Navigation
     if (user.role === 'admin') {
         document.getElementById('nav-admin').style.display = 'inline-block';
+        document.getElementById('nav-my-courses').style.display = 'none';
+        if (document.getElementById('enrollment-requests-panel')) document.getElementById('enrollment-requests-panel').style.display = 'block';
+        if (document.getElementById('admin-gradebook-section')) document.getElementById('admin-gradebook-section').style.display = 'none';
+    } else if (user.role === 'student') {
+        document.getElementById('nav-admin').style.display = 'none';
+        document.getElementById('nav-my-courses').style.display = 'inline-block';
+    } else if (user.role === 'professor' || user.role === 'Teaching Assistant') {
+        document.getElementById('nav-admin').style.display = 'inline-block';
+        document.getElementById('nav-admin').textContent = 'Professor Dashboard';
+        document.getElementById('nav-my-courses').style.display = 'none';
+        if (document.getElementById('admin-gradebook-section')) document.getElementById('admin-gradebook-section').style.display = 'block';
+        if (document.getElementById('enrollment-requests-panel')) document.getElementById('enrollment-requests-panel').style.display = 'none';
     } else {
         document.getElementById('nav-admin').style.display = 'none';
+        document.getElementById('nav-my-courses').style.display = 'none';
     }
     
     showView('courses');
@@ -87,7 +101,14 @@ function showView(viewId) {
     document.getElementById('timetable-view').style.display = 'none';
     document.getElementById('admin-view').style.display = 'none';
     document.getElementById('messages-view').style.display = 'none';
+    if (document.getElementById('my-courses-view')) document.getElementById('my-courses-view').style.display = 'none';
     
+    if (viewId === 'my-courses') {
+        document.getElementById('my-courses-view').style.display = 'flex';
+        fetchMyCourses();
+        return;
+    }
+
     document.getElementById(`${viewId}-view`).style.display = 'block';
     
     if (viewId === 'courses') fetchCourses();
@@ -139,7 +160,7 @@ function filterCourses() {
     renderCoursesGrid(filtered);
 }
 
-function openCourseModal(courseId) {
+async function openCourseModal(courseId) {
     const course = allCourses.find(c => c.id === courseId);
     if (!course) return;
 
@@ -152,7 +173,58 @@ function openCourseModal(courseId) {
     document.getElementById('modal-credits').textContent = course.credits;
     document.getElementById('modal-schedule').textContent = course.schedule;
 
+    // Enrollment section
+    const enrollSection = document.getElementById('enroll-section');
+    const enrollBtn = document.getElementById('enroll-btn');
+    const enrollMsg = document.getElementById('enroll-msg');
+    enrollMsg.textContent = '';
+    
+    if (currentUser.role === 'student') {
+        enrollSection.style.display = 'block';
+        try {
+            const res = await fetch(`/api/my-courses/${currentUser.username}`);
+            const myCourses = await res.json();
+            const existing = myCourses.find(c => c.id === courseId);
+            if (existing) {
+                enrollBtn.disabled = true;
+                enrollBtn.style.background = '#94a3b8';
+                enrollBtn.textContent = `Already Requested (${existing.enrollmentStatus.toUpperCase()})`;
+            } else {
+                enrollBtn.disabled = false;
+                enrollBtn.style.background = '';
+                enrollBtn.textContent = 'Request Enrollment';
+                enrollBtn.onclick = () => enrollInCourse(course.id);
+            }
+        } catch (e) {
+            enrollBtn.onclick = () => enrollInCourse(course.id);
+        }
+    } else {
+        enrollSection.style.display = 'none';
+    }
+
     document.getElementById('course-modal').style.display = 'flex';
+}
+
+async function enrollInCourse(courseId) {
+    try {
+        const res = await fetch('/api/enroll/request', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username: currentUser.username, courseId })
+        });
+        const data = await res.json();
+        const msgEl = document.getElementById('enroll-msg');
+        if (!res.ok) {
+            msgEl.style.color = '#ef4444';
+            msgEl.textContent = data.error;
+        } else {
+            msgEl.style.color = '#22c55e';
+            msgEl.textContent = 'Request sent!';
+            setTimeout(closeModal, 1500);
+        }
+    } catch (err) {
+        console.error('Enrollment error', err);
+    }
 }
 
 function closeModal(event) {
@@ -331,6 +403,8 @@ async function fetchAdminData() {
         renderAdminStaff();
         renderAdminAnnouncements();
         renderAdminSchedules();
+        
+        if (currentUser.role === 'admin') fetchEnrollmentRequests();
     } catch (err) {
         console.error('Failed to fetch admin data', err);
     }
@@ -550,8 +624,12 @@ async function deleteAnnouncementBtn(id) {
 // Admin Schedules
 function updateScheduleCourseDropdown() {
     const select = document.getElementById('schedule-course');
-    select.innerHTML = '<option value="" disabled selected>Select Course</option>' + 
-        allCourses.map(c => `<option value="${c.title}">[${c.code}] ${c.title}</option>`).join('');
+    const gradeSelect = document.getElementById('grade-course');
+    const options = '<option value="" disabled selected>Select Course</option>' + 
+        allCourses.map(c => `<option value="${c.id}">[${c.code}] ${c.title}</option>`).join('');
+    
+    if (select) select.innerHTML = options;
+    if (gradeSelect) gradeSelect.innerHTML = options;
 }
 
 function renderAdminSchedules() {
@@ -788,4 +866,139 @@ async function sendMessage(e) {
         console.error('Failed to send message', err);
     }
 }
+async function fetchEnrollmentRequests() {
+    try {
+        const res = await fetch('/api/enroll/requests');
+        const requests = await res.json();
+        renderEnrollmentRequests(requests);
+    } catch (err) {
+        console.error('Failed to fetch enrollment requests', err);
+    }
+}
 
+function renderEnrollmentRequests(requests) {
+    const tbody = document.getElementById('admin-enrollments-tbody');
+    if (!tbody) return;
+    if (requests.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:#94a3b8; padding:20px;">No pending requests</td></tr>';
+        return;
+    }
+
+    tbody.innerHTML = requests.map(r => `
+        <tr>
+            <td>${r.username}</td>
+            <td>${r.courseCode}</td>
+            <td>${r.courseTitle}</td>
+            <td>${new Date(r.date).toLocaleDateString()}</td>
+            <td>
+                <button class="action-btn edit" onclick="approveRequest(${r.id})">Approve</button>
+                <button class="action-btn delete" onclick="rejectRequest(${r.id})">Reject</button>
+            </td>
+        </tr>
+    `).join('');
+}
+
+async function approveRequest(id) {
+    try {
+        await fetch(`/api/enroll/approve/${id}`, { method: 'PUT' });
+        fetchEnrollmentRequests();
+    } catch (err) {
+        console.error('Failed to approve request', err);
+    }
+}
+
+async function rejectRequest(id) {
+    try {
+        await fetch(`/api/enroll/reject/${id}`, { method: 'PUT' });
+        fetchEnrollmentRequests();
+    } catch (err) {
+        console.error('Failed to reject request', err);
+    }
+}
+
+// Student Course View
+async function fetchMyCourses() {
+    try {
+        const [courseRes, gradeRes] = await Promise.all([
+            fetch(`/api/my-courses/${currentUser.username}`),
+            fetch(`/api/grades/${currentUser.username}`)
+        ]);
+        const myCourses = await courseRes.json();
+        const myGrades = await gradeRes.json();
+        
+        renderMyCourses(myCourses, myGrades);
+    } catch (err) {
+        console.error('Failed to fetch user data', err);
+    }
+}
+
+function renderMyCourses(myCourses, myGrades) {
+    const grid = document.getElementById('my-courses-grid');
+    if (grid) {
+        grid.innerHTML = myCourses.map(c => `
+            <div class="course-card">
+                <div class="card-icon">${c.icon}</div>
+                <h4>[${c.code}] ${c.title}</h4>
+                <p>Instructor: ${c.instructor}</p>
+                <div class="card-footer">
+                    <span class="status-badge ${c.enrollmentStatus.toLowerCase()}" style="padding: 4px 8px; border-radius: 4px; font-size: 0.8em; font-weight: 700; background: ${c.enrollmentStatus === 'approved' ? '#22c55e22' : c.enrollmentStatus === 'rejected' ? '#ef444422' : '#eab30822'}; color: ${c.enrollmentStatus === 'approved' ? '#22c55e' : c.enrollmentStatus === 'rejected' ? '#ef4444' : '#eab308'};">
+                        ${c.enrollmentStatus.toUpperCase()}
+                    </span>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    const gradesTbody = document.getElementById('my-grades-tbody');
+    if (gradesTbody) {
+        if (myGrades.length === 0) {
+            gradesTbody.innerHTML = '<tr><td colspan="4" style="text-align:center; color:#94a3b8; padding:10px;">No grades recorded yet</td></tr>';
+        } else {
+            gradesTbody.innerHTML = myGrades.map(g => {
+                const course = allCourses.find(c => c.id === g.courseId);
+                return `
+                    <tr>
+                        <td>${course ? course.title : 'Unknown'}</td>
+                        <td>${g.taskName}</td>
+                        <td><strong>${g.grade}</strong></td>
+                        <td>${g.feedback}</td>
+                    </tr>
+                `;
+            }).join('');
+        }
+    }
+}
+
+function closeMyCoursesView() {
+    document.getElementById('my-courses-view').style.display = 'none';
+}
+
+// Gradebook for Professors
+async function saveGrade(e) {
+    e.preventDefault();
+    const payload = {
+        username: document.getElementById('grade-student').value,
+        courseId: document.getElementById('grade-course').value,
+        taskName: document.getElementById('grade-task').value,
+        grade: document.getElementById('grade-score').value,
+        feedback: document.getElementById('grade-feedback').value
+    };
+
+    try {
+        const res = await fetch('/api/grades', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        
+        if (res.ok) {
+            alert('Grade submitted successfully');
+            document.getElementById('grade-form').reset();
+        } else {
+            const data = await res.json();
+            alert('Error: ' + data.error);
+        }
+    } catch (err) {
+        console.error('Failed to submit grade', err);
+    }
+}

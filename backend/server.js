@@ -313,6 +313,91 @@ app.put('/api/messages/read', (req, res) => {
     res.json({ success: true });
 });
 
+// ================= ADMISSIONS & ENROLLMENT =================
+const enrollments = [];
+const grades = [];
+let enrollmentIdCounter = 1;
+
+// Student requests to enroll in a course
+app.post('/api/enroll/request', (req, res) => {
+    const { username, courseId } = req.body;
+    const course = courses.find(c => c.id === parseInt(courseId));
+    if (!course) return res.status(404).json({ error: 'Course not found' });
+
+    const existing = enrollments.find(e => e.username === username && e.courseId === parseInt(courseId));
+    if (existing) return res.status(400).json({ error: 'You have already requested enrollment for this course' });
+
+    const newRequest = {
+        id: enrollmentIdCounter++,
+        username,
+        courseId: parseInt(courseId),
+        status: 'pending', // pending | approved | rejected
+        date: new Date().toISOString()
+    };
+    enrollments.push(newRequest);
+    res.json({ message: 'Enrollment request sent successfully', request: newRequest });
+});
+
+// Admin gets all pending requests
+app.get('/api/enroll/requests', (req, res) => {
+    const pending = enrollments.filter(e => e.status === 'pending').map(e => {
+        const course = courses.find(c => c.id === e.courseId);
+        return {
+            ...e,
+            courseCode: course ? course.code : 'Unknown',
+            courseTitle: course ? course.title : 'Unknown'
+        };
+    });
+    res.json(pending);
+});
+
+// Admin approves a request
+app.put('/api/enroll/approve/:id', (req, res) => {
+    const idx = enrollments.findIndex(e => e.id === parseInt(req.params.id));
+    if (idx === -1) return res.status(404).json({ error: 'Request not found' });
+    enrollments[idx].status = 'approved';
+    res.json(enrollments[idx]);
+});
+
+// Admin rejects a request
+app.put('/api/enroll/reject/:id', (req, res) => {
+    const idx = enrollments.findIndex(e => e.id === parseInt(req.params.id));
+    if (idx === -1) return res.status(404).json({ error: 'Request not found' });
+    enrollments[idx].status = 'rejected';
+    res.json(enrollments[idx]);
+});
+
+// Student views their enrolled courses (with status)
+app.get('/api/my-courses/:username', (req, res) => {
+    const { username } = req.params;
+    const result = enrollments.filter(e => e.username === username).map(e => {
+        const course = courses.find(c => c.id === e.courseId);
+        return { ...course, enrollmentStatus: e.status, enrollmentId: e.id };
+    });
+    res.json(result);
+});
+
+// Professor submits a grade
+app.post('/api/grades', (req, res) => {
+    const { username, courseId, grade, feedback, taskName } = req.body;
+    const newGrade = {
+        id: Date.now(),
+        username,
+        courseId: parseInt(courseId),
+        grade,
+        feedback: feedback || '',
+        taskName: taskName || 'General Assessment',
+        date: new Date().toISOString()
+    };
+    grades.push(newGrade);
+    res.json(newGrade);
+});
+
+// Student views their grades / transcript
+app.get('/api/grades/:username', (req, res) => {
+    res.json(grades.filter(g => g.username === req.params.username));
+});
+
 app.listen(PORT, () => {
     console.log(`Backend running on http://localhost:${PORT}`);
 });

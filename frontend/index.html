@@ -50,6 +50,7 @@
                 <button onclick="showView('timetable')">Timetable</button>
                 <button onclick="showView('messages')">Messages</button>
                 <button id="nav-admin" onclick="showView('admin')" style="display:none;">Admin Dashboard</button>
+                <button id="nav-my-courses" onclick="showView('my-courses')" style="display:none;">My Courses & Grades</button>
                 <button onclick="logout()" class="logout-btn">Logout</button>
             </div>
         </nav>
@@ -165,6 +166,46 @@
                 <div class="section-header">
                     <h3>Admin Dashboard</h3>
                     <p>Manage courses and staff members.</p>
+                </div>
+
+                <!-- Enrollment Requests Section (Admin only) -->
+                <div class="admin-panel" id="enrollment-requests-panel" style="display:none;">
+                    <h4>📩 Enrollment Requests</h4>
+                    <p style="color:#64748b; margin-bottom:15px;">Review and approve or reject student course enrollment requests.</p>
+                    <div class="table-container">
+                        <table class="admin-table">
+                            <thead>
+                                <tr>
+                                    <th>Student</th>
+                                    <th>Course Code</th>
+                                    <th>Course Title</th>
+                                    <th>Date</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="admin-enrollments-tbody">
+                                <tr><td colspan="5" style="text-align:center; color:#94a3b8; padding:20px;">No pending requests</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Gradebook Section (Professors & TAs only) -->
+                <div class="admin-panel" id="admin-gradebook-section" style="display:none; margin-top:30px;">
+                    <h4>📝 Gradebook</h4>
+                    <p style="color: #64748b; margin-bottom: 15px;">Input student grades and assessments.</p>
+                    <form id="grade-form" class="admin-form" onsubmit="saveGrade(event)">
+                        <div class="form-grid">
+                            <input type="text" id="grade-student" placeholder="Student Username" required>
+                            <select id="grade-course" required>
+                                <option value="" disabled selected>Select Course</option>
+                            </select>
+                            <input type="text" id="grade-task" placeholder="Assessment Name (e.g. Midterm)" required>
+                            <input type="text" id="grade-score" placeholder="Grade (e.g. A, 95/100)" required>
+                        </div>
+                        <input type="text" id="grade-feedback" placeholder="Optional Feedback" style="margin-top: 15px; width: 100%;">
+                        <button type="submit" class="add-btn">Submit Grade</button>
+                    </form>
                 </div>
 
                 <!-- Admin Courses Section -->
@@ -359,6 +400,11 @@
                         <span id="modal-schedule"></span>
                     </div>
                 </div>
+                <!-- Enrollment action for students -->
+                <div id="enroll-section" style="display:none; margin-top:20px; text-align:center;">
+                    <button id="enroll-btn" class="add-btn">Request Enrollment</button>
+                    <p id="enroll-msg" style="margin-top:8px; font-weight:600;"></p>
+                </div>
             </div>
         </div>
     </div>
@@ -395,6 +441,27 @@
                         <div id="staff-modal-courses" class="courses-list"></div>
                     </div>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- My Courses & Grades View (Students only) -->
+    <div id="my-courses-view" class="modal-overlay" style="display:none;" onclick="if(event.target===this)closeMyCoursesView()">
+        <div class="modal-content" style="max-width:700px; max-height:85vh; overflow-y:auto;" onclick="event.stopPropagation()">
+            <button class="close-modal" onclick="closeMyCoursesView()">×</button>
+            <h2 style="margin-top:0;">📚 My Courses & Grades</h2>
+
+            <h4 style="color:#0f172a; margin-bottom:10px;">Enrolled Courses</h4>
+            <div id="my-courses-grid" class="cards-grid" style="margin-bottom:30px;"></div>
+
+            <h4 style="color:#0f172a; margin-bottom:10px;">Transcript (Grades)</h4>
+            <div class="table-container">
+                <table class="admin-table">
+                    <thead>
+                        <tr><th>Course</th><th>Assessment</th><th>Grade</th><th>Feedback</th></tr>
+                    </thead>
+                    <tbody id="my-grades-tbody"></tbody>
+                </table>
             </div>
         </div>
     </div>
