@@ -48,6 +48,7 @@
                 <button onclick="showView('courses')">Course Catalog</button>
                 <button onclick="showView('staff-dir')">Staff Directory</button>
                 <button onclick="showView('timetable')">Timetable</button>
+                <button onclick="showView('messages')">Messages</button>
                 <button id="nav-admin" onclick="showView('admin')" style="display:none;">Admin Dashboard</button>
                 <button onclick="logout()" class="logout-btn">Logout</button>
             </div>
@@ -127,6 +128,35 @@
                         </thead>
                         <tbody id="timetable-tbody"></tbody>
                     </table>
+                </div>
+            </div>
+
+            <!-- Messages View -->
+            <div id="messages-view" class="view" style="display:none;">
+                <div class="section-header">
+                    <h3>Messages</h3>
+                    <p>Connect with professors and colleagues.</p>
+                </div>
+
+                <div class="chat-container">
+                    <div class="chat-sidebar">
+                        <h4>Active Chats</h4>
+                        <div id="conversations-list"></div>
+                        <h4 style="margin-top: 20px;">User Directory</h4>
+                        <div id="chat-staff-list"></div>
+                    </div>
+                    <div class="chat-window">
+                        <div id="chat-header" class="chat-header">
+                            <span id="chat-with-name">Select a conversation</span>
+                        </div>
+                        <div id="chat-messages" class="chat-messages">
+                            <div class="empty-chat">Select a professor from the list to start chatting.</div>
+                        </div>
+                        <form id="chat-form" class="chat-input-area" onsubmit="sendMessage(event)" style="display: none;">
+                            <input type="text" id="chat-input" placeholder="Type a message..." required>
+                            <button type="submit">Send</button>
+                        </form>
+                    </div>
                 </div>
             </div>
 

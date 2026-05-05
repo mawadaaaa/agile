@@ -3,6 +3,8 @@ let allCourses = [];
 let allStaff = [];
 let allAnnouncements = [];
 let allSchedules = [];
+let currentChatUser = null;
+let chatInterval = null;
 
 function switchAuthTab(tab) {
     document.getElementById('login-form').style.display = tab === 'login' ? 'block' : 'none';
@@ -84,6 +86,7 @@ function showView(viewId) {
     document.getElementById('announcements-view').style.display = 'none';
     document.getElementById('timetable-view').style.display = 'none';
     document.getElementById('admin-view').style.display = 'none';
+    document.getElementById('messages-view').style.display = 'none';
     
     document.getElementById(`${viewId}-view`).style.display = 'block';
     
@@ -92,6 +95,12 @@ function showView(viewId) {
     if (viewId === 'announcements') fetchAnnouncements();
     if (viewId === 'timetable') fetchTimetable();
     if (viewId === 'admin') fetchAdminData();
+    if (viewId === 'messages') {
+        initChatView();
+    } else {
+        clearInterval(chatInterval);
+        chatInterval = null;
+    }
 }
 
 // ================= COURSES VIEW =================
@@ -630,3 +639,153 @@ async function deleteScheduleBtn(id) {
         console.error('Failed to delete schedule', err);
     }
 }
+
+// ================= CHAT SYSTEM =================
+
+async function initChatView() {
+    await fetchStaffDir(); // Ensure we have staff list
+    renderChatSidebar();
+    
+    if (chatInterval) clearInterval(chatInterval);
+    chatInterval = setInterval(() => {
+        if (currentChatUser) fetchMessages();
+        renderChatSidebar();
+    }, 3000);
+}
+
+async function renderChatSidebar() {
+    try {
+        const [convsRes, usersRes] = await Promise.all([
+            fetch(`/api/messages/conversations/${currentUser.username}`),
+            fetch('/api/users')
+        ]);
+        
+        const activeChats = await convsRes.json();
+        const allUsers = await usersRes.json();
+        
+        // Render Active Chats
+        const convList = document.getElementById('conversations-list');
+        if (activeChats.length === 0) {
+            convList.innerHTML = '<div style="font-size: 0.85em; color: #94a3b8; padding: 10px;">No active conversations</div>';
+        } else {
+            convList.innerHTML = activeChats.map(chatInfo => `
+                <div class="chat-list-item ${currentChatUser === chatInfo.username ? 'active' : ''}" onclick="startChat('${chatInfo.username}')">
+                    <div style="background: #e2e8f0; width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.8em;">👤</div>
+                    <span>${chatInfo.username}</span>
+                    ${chatInfo.unreadCount > 0 && currentChatUser !== chatInfo.username ? `<span class="unread-badge">${chatInfo.unreadCount}</span>` : ''}
+                </div>
+            `).join('');
+        }
+
+        // Render User Directory Grouped by Role
+        const directoryContainer = document.getElementById('chat-staff-list');
+        const grouped = allUsers.reduce((acc, user) => {
+            if (user.username === currentUser.username) return acc;
+            if (!acc[user.role]) acc[user.role] = [];
+            acc[user.role].push(user);
+            return acc;
+        }, {});
+
+        let directoryHTML = '';
+        for (const role in grouped) {
+            directoryHTML += `<div style="font-size: 0.75em; color: #64748b; font-weight: 700; text-transform: uppercase; margin: 15px 0 5px 0; letter-spacing: 0.5px;">${role}s</div>`;
+            directoryHTML += grouped[role].map(u => `
+                <div class="chat-list-item ${currentChatUser === u.username ? 'active' : ''}" onclick="startChat('${u.username}')">
+                    <div style="background: #e2e8f0; width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.8em;">
+                        ${u.role === 'student' ? '🎓' : '👨‍🏫'}
+                    </div>
+                    <span style="font-size: 0.9em;">${u.username}</span>
+                </div>
+            `).join('');
+        }
+        
+        directoryContainer.innerHTML = directoryHTML || '<div style="font-size: 0.85em; color: #94a3b8; padding: 10px;">No other users found</div>';
+    } catch (err) {
+        console.error('Failed to render chat sidebar', err);
+    }
+}
+
+async function startChat(username) {
+    currentChatUser = username;
+    document.getElementById('chat-with-name').textContent = `Chatting with ${username}`;
+    document.getElementById('chat-form').style.display = 'flex';
+    document.getElementById('chat-messages').innerHTML = '<div class="empty-chat">Loading messages...</div>';
+    
+    // Mark messages as read
+    try {
+        await fetch('/api/messages/read', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ currentUser: currentUser.username, chatUser: username })
+        });
+    } catch (err) {
+        console.error('Failed to mark messages as read', err);
+    }
+    
+    renderChatSidebar();
+    await fetchMessages();
+}
+
+async function fetchMessages() {
+    if (!currentChatUser) return;
+    
+    try {
+        const res = await fetch(`/api/messages?user1=${currentUser.username}&user2=${currentChatUser}`);
+        const messages = await res.json();
+        renderMessages(messages);
+    } catch (err) {
+        console.error('Failed to fetch messages', err);
+    }
+}
+
+function renderMessages(messages) {
+    const container = document.getElementById('chat-messages');
+    const isAtBottom = container.scrollHeight - container.scrollTop <= container.clientHeight + 100;
+
+    if (messages.length === 0) {
+        container.innerHTML = '<div class="empty-chat">No messages yet. Say hi!</div>';
+        return;
+    }
+
+    container.innerHTML = messages.map(m => {
+        const isSent = m.sender === currentUser.username;
+        const time = new Date(m.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        return `
+            <div class="message-bubble ${isSent ? 'sent' : 'received'}">
+                <div>${m.text}</div>
+                <div class="message-time">${time}</div>
+            </div>
+        `;
+    }).join('');
+
+    if (isAtBottom) {
+        container.scrollTop = container.scrollHeight;
+    }
+}
+
+async function sendMessage(e) {
+    e.preventDefault();
+    const input = document.getElementById('chat-input');
+    const text = input.value.trim();
+    if (!text || !currentChatUser) return;
+
+    try {
+        const res = await fetch('/api/messages', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                sender: currentUser.username,
+                receiver: currentChatUser,
+                text: text
+            })
+        });
+        
+        if (res.ok) {
+            input.value = '';
+            await fetchMessages();
+        }
+    } catch (err) {
+        console.error('Failed to send message', err);
+    }
+}
+

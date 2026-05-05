@@ -14,7 +14,10 @@ app.use(express.static(path.join(__dirname, '../frontend')));
 // In-memory databases
 const users = [
     { username: 'admin', password: '123', role: 'admin' },
-    { username: 'student', password: '123', role: 'student' }
+    { username: 'student', password: '123', role: 'student' },
+    { username: 'Dr. Alice Smith', password: '123', role: 'professor' },
+    { username: 'Prof. John Doe', password: '123', role: 'professor' },
+    { username: 'Jane Developer', password: '123', role: 'Teaching Assistant' }
 ];
 
 const courses = [
@@ -60,6 +63,14 @@ app.post('/api/login', (req, res) => {
     res.json({ message: 'Login successful', user: { username: user.username, role: user.role } });
 });
 
+app.get('/api/users', (req, res) => {
+    // Return users excluding admin and without passwords
+    const filteredUsers = users
+        .filter(u => u.role !== 'admin')
+        .map(u => ({ username: u.username, role: u.role }));
+    res.json(filteredUsers);
+});
+
 // 2 & 3. View & Manage Course Catalog (AGILE-7, AGILE-27)
 app.get('/api/courses', (req, res) => {
     res.json(courses);
@@ -67,17 +78,17 @@ app.get('/api/courses', (req, res) => {
 
 app.post('/api/courses', (req, res) => {
     const { title, code, department, prerequisites, description, icon, instructor, credits, schedule } = req.body;
-    const newCourse = { 
-        id: courseIdCounter++, 
-        title, 
+    const newCourse = {
+        id: courseIdCounter++,
+        title,
         code: code || '',
         department: department || '',
         prerequisites: prerequisites || '',
-        description, 
-        icon: icon || '📚', 
-        instructor: instructor || 'TBA', 
-        credits: credits || 3, 
-        schedule: schedule || 'TBA' 
+        description,
+        icon: icon || '📚',
+        instructor: instructor || 'TBA',
+        credits: credits || 3,
+        schedule: schedule || 'TBA'
     };
     courses.push(newCourse);
     res.json(newCourse);
@@ -87,7 +98,7 @@ app.put('/api/courses/:id', (req, res) => {
     const courseId = parseInt(req.params.id);
     const index = courses.findIndex(c => c.id === courseId);
     if (index === -1) return res.status(404).json({ error: 'Course not found' });
-    
+
     courses[index] = { ...courses[index], ...req.body };
     res.json(courses[index]);
 });
@@ -96,7 +107,7 @@ app.delete('/api/courses/:id', (req, res) => {
     const courseId = parseInt(req.params.id);
     const index = courses.findIndex(c => c.id === courseId);
     if (index === -1) return res.status(404).json({ error: 'Course not found' });
-    
+
     courses.splice(index, 1);
     res.json({ message: 'Course deleted' });
 });
@@ -115,10 +126,10 @@ app.get('/api/staff/:id', (req, res) => {
 
 app.post('/api/staff', (req, res) => {
     const { name, role, department, email, office_hours, contact, assigned_courses } = req.body;
-    const newStaff = { 
-        id: staffIdCounter++, 
-        name, 
-        role, 
+    const newStaff = {
+        id: staffIdCounter++,
+        name,
+        role,
         department,
         email: email || '',
         office_hours: office_hours || '',
@@ -133,7 +144,7 @@ app.put('/api/staff/:id', (req, res) => {
     const staffId = parseInt(req.params.id);
     const index = staff.findIndex(s => s.id === staffId);
     if (index === -1) return res.status(404).json({ error: 'Staff not found' });
-    
+
     staff[index] = { ...staff[index], ...req.body };
     res.json(staff[index]);
 });
@@ -142,7 +153,7 @@ app.delete('/api/staff/:id', (req, res) => {
     const staffId = parseInt(req.params.id);
     const index = staff.findIndex(s => s.id === staffId);
     if (index === -1) return res.status(404).json({ error: 'Staff not found' });
-    
+
     staff.splice(index, 1);
     res.json({ message: 'Staff deleted' });
 });
@@ -171,7 +182,7 @@ app.delete('/api/announcements/:id', (req, res) => {
     const announcementId = parseInt(req.params.id);
     const index = announcements.findIndex(a => a.id === announcementId);
     if (index === -1) return res.status(404).json({ error: 'Announcement not found' });
-    
+
     announcements.splice(index, 1);
     res.json({ message: 'Announcement deleted' });
 });
@@ -183,7 +194,7 @@ app.get('/api/schedules', (req, res) => {
 
 app.post('/api/schedules', (req, res) => {
     const { room, course, day, timeSlot } = req.body;
-    
+
     // Conflict check
     const conflict = schedules.find(s => s.room === room && s.day === day && s.timeSlot === timeSlot);
     if (conflict) {
@@ -207,7 +218,7 @@ app.put('/api/schedules/:id', (req, res) => {
     if (index === -1) return res.status(404).json({ error: 'Schedule not found' });
 
     const { room, course, day, timeSlot } = req.body;
-    
+
     // Conflict check
     const conflict = schedules.find(s => s.id !== scheduleId && s.room === room && s.day === day && s.timeSlot === timeSlot);
     if (conflict) {
@@ -225,6 +236,81 @@ app.delete('/api/schedules/:id', (req, res) => {
 
     schedules.splice(index, 1);
     res.json({ message: 'Schedule deleted' });
+});
+
+// 7. Messaging (AGILE-Chat)
+const messages = [];
+let messageIdCounter = 1;
+
+app.get('/api/messages', (req, res) => {
+    const { user1, user2 } = req.query;
+    if (!user1 || !user2) {
+        // If no specific conversation requested, maybe return all for user?
+        // For now, require both for a simple 1:1 chat view
+        return res.status(400).json({ error: 'Usernames user1 and user2 are required' });
+    }
+
+    const filtered = messages.filter(m =>
+        (m.sender === user1 && m.receiver === user2) ||
+        (m.sender === user2 && m.receiver === user1)
+    );
+    res.json(filtered);
+});
+
+app.post('/api/messages', (req, res) => {
+    const { sender, receiver, text } = req.body;
+    if (!sender || !receiver || !text) {
+        return res.status(400).json({ error: 'Sender, receiver and text are required' });
+    }
+
+    const newMessage = {
+        id: messageIdCounter++,
+        sender,
+        receiver,
+        text,
+        timestamp: new Date().toISOString(),
+        read: false
+    };
+    messages.push(newMessage);
+    res.json(newMessage);
+});
+
+app.get('/api/messages/conversations/:username', (req, res) => {
+    const { username } = req.params;
+    const conversations = {};
+
+    messages.forEach(m => {
+        let otherUser = null;
+        if (m.sender === username) otherUser = m.receiver;
+        if (m.receiver === username) otherUser = m.sender;
+
+        if (otherUser) {
+            if (!conversations[otherUser]) {
+                conversations[otherUser] = { username: otherUser, unreadCount: 0 };
+            }
+            // If the other user sent the message to us, and it's unread
+            if (m.sender === otherUser && m.receiver === username && !m.read) {
+                conversations[otherUser].unreadCount++;
+            }
+        }
+    });
+
+    res.json(Object.values(conversations));
+});
+
+app.put('/api/messages/read', (req, res) => {
+    const { currentUser, chatUser } = req.body;
+    if (!currentUser || !chatUser) {
+        return res.status(400).json({ error: 'currentUser and chatUser are required' });
+    }
+
+    messages.forEach(m => {
+        if (m.sender === chatUser && m.receiver === currentUser && !m.read) {
+            m.read = true;
+        }
+    });
+
+    res.json({ success: true });
 });
 
 app.listen(PORT, () => {
