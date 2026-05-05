@@ -104,6 +104,13 @@ app.get('/api/staff', (req, res) => {
     res.json(staff);
 });
 
+app.get('/api/staff/:id', (req, res) => {
+    const staffId = parseInt(req.params.id);
+    const s = staff.find(s => s.id === staffId);
+    if (!s) return res.status(404).json({ error: 'Staff not found' });
+    res.json(s);
+});
+
 app.post('/api/staff', (req, res) => {
     const { name, role, department, email, office_hours, contact, assigned_courses } = req.body;
     const newStaff = { 

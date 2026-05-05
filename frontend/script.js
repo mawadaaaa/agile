@@ -154,24 +154,87 @@ async function fetchStaffDir() {
     try {
         const res = await fetch('/api/staff');
         allStaff = await res.json();
-        const grid = document.getElementById('staff-dir-grid');
-        grid.innerHTML = allStaff.map(s => `
-            <div class="course-card">
-                <h4>${s.name}</h4>
-                <p style="margin-bottom: 5px;"><strong>${s.role}</strong> - ${s.department}</p>
-                <div style="font-size: 0.9em; color: #64748b; margin-bottom: 15px; flex-grow: 1;">
-                    <div>📧 ${s.email || 'N/A'}</div>
-                    <div>📍 ${s.contact || 'N/A'}</div>
-                    <div>🕒 ${s.office_hours || 'N/A'}</div>
-                </div>
-                <div class="card-footer">
-                    <span>📚 ${s.assigned_courses || 'None'}</span>
-                </div>
-            </div>
-        `).join('');
+        renderStaffGrid(allStaff);
     } catch (err) {
         console.error('Failed to fetch staff', err);
     }
+}
+
+function renderStaffGrid(staff) {
+    const grid = document.getElementById('staff-dir-grid');
+    grid.innerHTML = staff.map(s => `
+        <div class="course-card" onclick="openStaffModal(${s.id})" style="cursor: pointer;">
+            <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 10px;">
+                <div style="font-size: 2.5em; background: #e2e8f0; border-radius: 50%; width: 60px; height: 60px; display: flex; align-items: center; justify-content: center;">👤</div>
+                <div>
+                    <h4 style="margin: 0; color: #0f172a;">${s.name}</h4>
+                    <span style="font-size: 0.9em; color: #3b82f6; font-weight: 600;">${s.role}</span>
+                </div>
+            </div>
+            <p style="margin-bottom: 5px; color: #475569;"><strong>Dept:</strong> ${s.department}</p>
+            <div style="font-size: 0.9em; color: #64748b; margin-bottom: 15px; flex-grow: 1;">
+                <div>📧 ${s.email || 'N/A'}</div>
+            </div>
+        </div>
+    `).join('');
+}
+
+function filterStaff() {
+    const query = document.getElementById('staff-search').value.toLowerCase();
+    const filtered = allStaff.filter(s => 
+        s.name.toLowerCase().includes(query) || 
+        (s.department && s.department.toLowerCase().includes(query))
+    );
+    renderStaffGrid(filtered);
+}
+
+async function openStaffModal(staffId) {
+    try {
+        // Fetch single staff by ID from backend as required
+        const res = await fetch(`/api/staff/${staffId}`);
+        if (!res.ok) throw new Error('Staff member not found');
+        const s = await res.json();
+
+        document.getElementById('staff-modal-name').textContent = s.name;
+        document.getElementById('staff-modal-role').textContent = s.role;
+        document.getElementById('staff-modal-department').textContent = s.department || 'N/A';
+        document.getElementById('staff-modal-email').textContent = s.email || 'N/A';
+        document.getElementById('staff-modal-office').textContent = s.office_hours || 'N/A';
+        document.getElementById('staff-modal-contact').textContent = s.contact || 'N/A';
+        
+        // Render assigned courses
+        const coursesContainer = document.getElementById('staff-modal-courses');
+        if (s.assigned_courses) {
+            const courseList = s.assigned_courses.split(',').map(c => c.trim());
+            coursesContainer.innerHTML = courseList.map(c => `<span onclick="openCourseFromStaff('${c.replace(/'/g, "\\'")}')" style="display: inline-block; background: #e2e8f0; padding: 4px 8px; border-radius: 4px; margin: 2px; font-size: 0.85em; color: #3b82f6; cursor: pointer; text-decoration: underline; font-weight: 500;">📚 ${c}</span>`).join('');
+        } else {
+            coursesContainer.innerHTML = '<span style="color: #94a3b8; font-style: italic;">None assigned</span>';
+        }
+
+        document.getElementById('staff-modal').style.display = 'flex';
+    } catch (err) {
+        console.error('Failed to load staff details', err);
+        alert('Could not load staff details. Please try again.');
+    }
+}
+
+async function openCourseFromStaff(title) {
+    if (allCourses.length === 0) {
+        const res = await fetch('/api/courses');
+        allCourses = await res.json();
+    }
+    const course = allCourses.find(c => c.title.toLowerCase() === title.toLowerCase() || c.code.toLowerCase() === title.toLowerCase());
+    if (course) {
+        document.getElementById('staff-modal').style.display = 'none';
+        openCourseModal(course.id);
+    } else {
+        alert('Course details not found for: ' + title);
+    }
+}
+
+function closeStaffModal(event) {
+    if (event && event.target.id !== 'staff-modal') return;
+    document.getElementById('staff-modal').style.display = 'none';
 }
 
 // ================= ANNOUNCEMENTS VIEW =================
