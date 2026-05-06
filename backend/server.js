@@ -314,9 +314,17 @@ app.put('/api/messages/read', (req, res) => {
 });
 
 // ================= ADMISSIONS & ENROLLMENT =================
-const enrollments = [];
-const grades = [];
-let enrollmentIdCounter = 1;
+const enrollments = [
+    { id: 1, username: 'student', courseId: 1, status: 'approved', date: new Date().toISOString() },
+    { id: 2, username: 'student', courseId: 2, status: 'approved', date: new Date().toISOString() },
+    { id: 3, username: 'student', courseId: 3, status: 'approved', date: new Date().toISOString() }
+];
+const grades = [
+    { id: 1, username: 'student', courseId: 1, grade: '38/100', feedback: 'skill issue', taskName: 'Midterm Exam', date: new Date().toISOString() },
+    { id: 2, username: 'student', courseId: 2, grade: '85/100', feedback: 'Good effort, keep it up!', taskName: 'Assignment 1', date: new Date().toISOString() },
+    { id: 3, username: 'student', courseId: 3, grade: '92/100', feedback: 'Excellent project', taskName: 'Final Project', date: new Date().toISOString() }
+];
+let enrollmentIdCounter = 4;
 
 // Student requests to enroll in a course
 app.post('/api/enroll/request', (req, res) => {
