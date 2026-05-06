@@ -78,6 +78,7 @@ function loginSuccess(user) {
         document.getElementById('nav-my-courses').style.display = 'none';
         if (document.getElementById('admin-gradebook-section')) document.getElementById('admin-gradebook-section').style.display = 'block';
         if (document.getElementById('admin-materials-section')) document.getElementById('admin-materials-section').style.display = 'block';
+        if (document.getElementById('admin-quizzes-section')) document.getElementById('admin-quizzes-section').style.display = 'block';
         if (document.getElementById('enrollment-requests-panel')) document.getElementById('enrollment-requests-panel').style.display = 'none';
     } else {
         document.getElementById('nav-admin').style.display = 'none';
@@ -631,12 +632,14 @@ function updateScheduleCourseDropdown() {
     const select = document.getElementById('schedule-course');
     const gradeSelect = document.getElementById('grade-course');
     const materialSelect = document.getElementById('material-course');
+    const quizSelect = document.getElementById('quiz-course');
     const options = '<option value="" disabled selected>Select Course</option>' + 
         allCourses.map(c => `<option value="${c.id}">[${c.code}] ${c.title}</option>`).join('');
     
     if (select) select.innerHTML = options;
     if (gradeSelect) gradeSelect.innerHTML = options;
     if (materialSelect) materialSelect.innerHTML = options;
+    if (quizSelect) quizSelect.innerHTML = options;
 }
 
 function renderAdminSchedules() {
@@ -1012,7 +1015,10 @@ function renderMyCourses(myCourses, myGrades) {
                     <span class="status-badge ${c.enrollmentStatus.toLowerCase()}" style="padding: 4px 8px; border-radius: 4px; font-size: 0.8em; font-weight: 700; background: ${c.enrollmentStatus === 'approved' ? '#22c55e22' : c.enrollmentStatus === 'rejected' ? '#ef444422' : '#eab30822'}; color: ${c.enrollmentStatus === 'approved' ? '#22c55e' : c.enrollmentStatus === 'rejected' ? '#ef4444' : '#eab308'};">
                         ${c.enrollmentStatus.toUpperCase()}
                     </span>
-                    ${c.enrollmentStatus === 'approved' ? `<button onclick="openMaterialsModal(${c.id}, '${c.title}')" class="add-btn" style="padding: 4px 8px; font-size: 0.8em; margin: 0;">Materials</button>` : ''}
+                    <div>
+                        ${c.enrollmentStatus === 'approved' ? `<button onclick="openMaterialsModal(${c.id}, '${c.title.replace(/'/g, "\\'")}')" class="add-btn" style="padding: 4px 8px; font-size: 0.8em; margin: 0; margin-right: 5px;">Materials</button>` : ''}
+                        ${c.enrollmentStatus === 'approved' ? `<button onclick="openStudentQuizzesModal(${c.id}, '${c.title.replace(/'/g, "\\'")}')" class="add-btn" style="padding: 4px 8px; font-size: 0.8em; margin: 0; background: #8b5cf6;">Quizzes</button>` : ''}
+                    </div>
                 </div>
             </div>
         `).join('');
@@ -1103,4 +1109,188 @@ async function openMaterialsModal(courseId, courseTitle) {
 function closeMaterialsModal(event) {
     if (event && event.target.id !== 'materials-modal') return;
     document.getElementById('materials-modal').style.display = 'none';
+}
+
+// ================= QUIZ SYSTEM =================
+let questionCount = 0;
+
+function addQuizQuestion() {
+    questionCount++;
+    const container = document.getElementById('quiz-questions-container');
+    const qDiv = document.createElement('div');
+    qDiv.className = 'quiz-question';
+    qDiv.style.marginBottom = '15px';
+    qDiv.style.padding = '10px';
+    qDiv.style.background = '#f8fafc';
+    qDiv.style.borderRadius = '8px';
+    qDiv.innerHTML = `
+        <input type="text" class="q-text" placeholder="Question ${questionCount}" required style="width:100%; margin-bottom:10px; padding:8px; border:1px solid #cbd5e1; border-radius:6px;">
+        <div style="display: flex; flex-wrap: wrap; justify-content: space-between;">
+            <input type="text" class="q-opt" placeholder="Option 1" required style="width:48%; margin-bottom:10px; padding:8px; border:1px solid #cbd5e1; border-radius:6px;">
+            <input type="text" class="q-opt" placeholder="Option 2" required style="width:48%; margin-bottom:10px; padding:8px; border:1px solid #cbd5e1; border-radius:6px;">
+            <input type="text" class="q-opt" placeholder="Option 3" required style="width:48%; margin-bottom:10px; padding:8px; border:1px solid #cbd5e1; border-radius:6px;">
+            <input type="text" class="q-opt" placeholder="Option 4" required style="width:48%; margin-bottom:10px; padding:8px; border:1px solid #cbd5e1; border-radius:6px;">
+        </div>
+        <select class="q-correct" required style="width:100%; padding:8px; border:1px solid #cbd5e1; border-radius:6px;">
+            <option value="" disabled selected>Select Correct Option</option>
+            <option value="0">Option 1</option>
+            <option value="1">Option 2</option>
+            <option value="2">Option 3</option>
+            <option value="3">Option 4</option>
+        </select>
+    `;
+    container.appendChild(qDiv);
+}
+
+async function saveQuiz(e) {
+    e.preventDefault();
+    const errorDiv = document.getElementById('quiz-error');
+    errorDiv.textContent = '';
+    
+    const courseId = document.getElementById('quiz-course').value;
+    const title = document.getElementById('quiz-title').value;
+    
+    const qDivs = document.querySelectorAll('.quiz-question');
+    if (qDivs.length === 0) {
+        errorDiv.textContent = 'Please add at least one question';
+        return;
+    }
+    
+    const questions = [];
+    qDivs.forEach(div => {
+        const text = div.querySelector('.q-text').value;
+        const opts = div.querySelectorAll('.q-opt');
+        const options = Array.from(opts).map(o => o.value);
+        const correctIndex = parseInt(div.querySelector('.q-correct').value);
+        questions.push({ text, options, correctIndex });
+    });
+
+    const payload = { courseId, title, questions, createdBy: currentUser.username };
+
+    try {
+        const res = await fetch('/api/quizzes', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        if (!res.ok) {
+            const data = await res.json();
+            errorDiv.textContent = data.error || 'Failed to save quiz';
+            return;
+        }
+        
+        document.getElementById('quiz-form').reset();
+        document.getElementById('quiz-questions-container').innerHTML = '';
+        questionCount = 0;
+        alert('Quiz published successfully');
+    } catch (err) {
+        console.error('Failed to save quiz', err);
+        errorDiv.textContent = 'An error occurred';
+    }
+}
+
+async function openStudentQuizzesModal(courseId, courseTitle) {
+    document.getElementById('student-quizzes-course-title').textContent = courseTitle;
+    const container = document.getElementById('student-quizzes-list-container');
+    container.innerHTML = '<div style="text-align:center; color:#94a3b8;">Loading quizzes...</div>';
+    document.getElementById('student-quizzes-modal').style.display = 'flex';
+
+    try {
+        const res = await fetch(\`/api/quizzes/\${courseId}\`);
+        const quizzes = await res.json();
+        
+        if (quizzes.length === 0) {
+            container.innerHTML = '<div style="text-align:center; color:#94a3b8; padding: 20px;">No quizzes available for this course.</div>';
+            return;
+        }
+
+        container.innerHTML = quizzes.map(q => \`
+            <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px; display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                    <strong style="color: #0f172a; display: block; margin-bottom: 4px;">\${q.title}</strong>
+                    <span style="font-size: 0.8em; color: #64748b;">By \${q.createdBy} • \${q.questions.length} questions</span>
+                </div>
+                <button onclick='startQuiz(\${JSON.stringify(q).replace(/'/g, "&#39;")})' class="add-btn" style="padding: 6px 12px; font-size: 0.85em; background: #8b5cf6;">Take Quiz</button>
+            </div>
+        \`).join('');
+    } catch (err) {
+        console.error('Failed to load quizzes', err);
+        container.innerHTML = '<div style="text-align:center; color:#ef4444;">Failed to load quizzes</div>';
+    }
+}
+
+function closeStudentQuizzesModal(event) {
+    if (event && event.target.id !== 'student-quizzes-modal') return;
+    document.getElementById('student-quizzes-modal').style.display = 'none';
+}
+
+let currentTakingQuiz = null;
+
+function startQuiz(quiz) {
+    currentTakingQuiz = quiz;
+    document.getElementById('take-quiz-title').textContent = quiz.title;
+    const container = document.getElementById('take-quiz-questions-container');
+    
+    container.innerHTML = quiz.questions.map((q, idx) => \`
+        <div style="margin-bottom: 15px; padding: 15px; background: #f1f5f9; border-radius: 8px;">
+            <p style="font-weight: 600; margin-bottom: 10px;">\${idx + 1}. \${q.text}</p>
+            \${q.options.map((opt, optIdx) => \`
+                <label style="display: block; margin-bottom: 5px; cursor: pointer;">
+                    <input type="radio" name="q\${idx}" value="\${optIdx}" required style="margin-right: 8px;">
+                    \${opt}
+                </label>
+            \`).join('')}
+        </div>
+    \`).join('');
+    
+    document.getElementById('take-quiz-modal').style.display = 'flex';
+}
+
+function closeTakeQuizModal(event) {
+    if (event && event.target.id !== 'take-quiz-modal') return;
+    document.getElementById('take-quiz-modal').style.display = 'none';
+}
+
+async function submitQuiz(e) {
+    e.preventDefault();
+    if (!currentTakingQuiz) return;
+    
+    const answers = [];
+    let allAnswered = true;
+    currentTakingQuiz.questions.forEach((_, idx) => {
+        const selected = document.querySelector(\`input[name="q\${idx}"]:checked\`);
+        if (selected) {
+            answers.push(parseInt(selected.value));
+        } else {
+            allAnswered = false;
+        }
+    });
+    
+    if (!allAnswered) {
+        alert("Please answer all questions");
+        return;
+    }
+    
+    try {
+        const res = await fetch('/api/quizzes/submit', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                username: currentUser.username,
+                quizId: currentTakingQuiz.id,
+                answers
+            })
+        });
+        
+        const data = await res.json();
+        if (res.ok) {
+            alert(\`Quiz submitted! You scored \${data.score} out of \${data.total}\`);
+            closeTakeQuizModal();
+            fetchMyCourses(); // refresh grades
+        } else {
+            alert('Failed to submit quiz: ' + data.error);
+        }
+    } catch (err) {
+        console.error('Failed to submit quiz', err);
+    }
 }

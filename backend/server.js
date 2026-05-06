@@ -278,6 +278,58 @@ app.delete('/api/materials/:id', (req, res) => {
     res.json({ message: 'Material deleted' });
 });
 
+// 6.6. Quizzes (AGILE-31)
+const quizzes = [];
+let quizIdCounter = 1;
+
+app.get('/api/quizzes/:courseId', (req, res) => {
+    const courseId = parseInt(req.params.courseId);
+    res.json(quizzes.filter(q => q.courseId === courseId));
+});
+
+app.post('/api/quizzes', (req, res) => {
+    const { courseId, title, questions, createdBy } = req.body;
+    if (!courseId || !title || !questions) {
+        return res.status(400).json({ error: 'Course, title, and questions are required' });
+    }
+    const newQuiz = {
+        id: quizIdCounter++,
+        courseId: parseInt(courseId),
+        title,
+        questions,
+        createdBy: createdBy || 'Professor',
+        date: new Date().toISOString()
+    };
+    quizzes.push(newQuiz);
+    res.json(newQuiz);
+});
+
+app.post('/api/quizzes/submit', (req, res) => {
+    const { username, quizId, answers } = req.body;
+    const quiz = quizzes.find(q => q.id === parseInt(quizId));
+    if (!quiz) return res.status(404).json({ error: 'Quiz not found' });
+
+    let score = 0;
+    quiz.questions.forEach((q, idx) => {
+        if (answers[idx] === q.correctIndex) score++;
+    });
+
+    const gradeText = `${score}/${quiz.questions.length}`;
+    
+    const newGrade = {
+        id: Date.now(),
+        username,
+        courseId: quiz.courseId,
+        grade: gradeText,
+        feedback: 'Auto-graded Quiz',
+        taskName: quiz.title,
+        date: new Date().toISOString()
+    };
+    grades.push(newGrade);
+    
+    res.json({ message: 'Quiz submitted successfully', score, total: quiz.questions.length });
+});
+
 // 7. Messaging (AGILE-Chat)
 const messages = [];
 let messageIdCounter = 1;
