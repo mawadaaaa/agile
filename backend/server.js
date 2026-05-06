@@ -42,6 +42,8 @@ let scheduleIdCounter = 1;
 
 const announcements = [];
 const schedules = [];
+const materials = [];
+let materialIdCounter = 1;
 
 // 1. User Registration & Login (AGILE-30)
 app.post('/api/register', (req, res) => {
@@ -236,6 +238,44 @@ app.delete('/api/schedules/:id', (req, res) => {
 
     schedules.splice(index, 1);
     res.json({ message: 'Schedule deleted' });
+});
+
+// 6.5. Course Materials
+app.get('/api/materials', (req, res) => {
+    res.json(materials);
+});
+
+app.get('/api/materials/:courseId', (req, res) => {
+    const courseId = parseInt(req.params.courseId);
+    const courseMaterials = materials.filter(m => m.courseId === courseId);
+    res.json(courseMaterials);
+});
+
+app.post('/api/materials', (req, res) => {
+    const { courseId, title, url, uploadedBy } = req.body;
+    if (!courseId || !title || !url) {
+        return res.status(400).json({ error: 'Course, title, and URL are required' });
+    }
+
+    const newMaterial = {
+        id: materialIdCounter++,
+        courseId: parseInt(courseId),
+        title,
+        url,
+        uploadedBy: uploadedBy || 'Professor',
+        date: new Date().toISOString()
+    };
+    materials.push(newMaterial);
+    res.json(newMaterial);
+});
+
+app.delete('/api/materials/:id', (req, res) => {
+    const materialId = parseInt(req.params.id);
+    const index = materials.findIndex(m => m.id === materialId);
+    if (index === -1) return res.status(404).json({ error: 'Material not found' });
+
+    materials.splice(index, 1);
+    res.json({ message: 'Material deleted' });
 });
 
 // 7. Messaging (AGILE-Chat)

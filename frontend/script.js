@@ -3,6 +3,7 @@ let allCourses = [];
 let allStaff = [];
 let allAnnouncements = [];
 let allSchedules = [];
+let allMaterials = [];
 let currentChatUser = null;
 let chatInterval = null;
 
@@ -76,6 +77,7 @@ function loginSuccess(user) {
         document.getElementById('nav-admin').textContent = 'Professor Dashboard';
         document.getElementById('nav-my-courses').style.display = 'none';
         if (document.getElementById('admin-gradebook-section')) document.getElementById('admin-gradebook-section').style.display = 'block';
+        if (document.getElementById('admin-materials-section')) document.getElementById('admin-materials-section').style.display = 'block';
         if (document.getElementById('enrollment-requests-panel')) document.getElementById('enrollment-requests-panel').style.display = 'none';
     } else {
         document.getElementById('nav-admin').style.display = 'none';
@@ -386,16 +388,18 @@ function renderTimetable(schedules) {
 
 async function fetchAdminData() {
     try {
-        const [resCourses, resStaff, resAnnouncements, resSchedules] = await Promise.all([
+        const [resCourses, resStaff, resAnnouncements, resSchedules, resMaterials] = await Promise.all([
             fetch('/api/courses'),
             fetch('/api/staff'),
             fetch('/api/announcements'),
-            fetch('/api/schedules')
+            fetch('/api/schedules'),
+            fetch('/api/materials')
         ]);
         allCourses = await resCourses.json();
         allStaff = await resStaff.json();
         allAnnouncements = await resAnnouncements.json();
         allSchedules = await resSchedules.json();
+        allMaterials = await resMaterials.json();
         
         updateScheduleCourseDropdown();
         
@@ -403,6 +407,7 @@ async function fetchAdminData() {
         renderAdminStaff();
         renderAdminAnnouncements();
         renderAdminSchedules();
+        renderAdminMaterials();
         
         if (currentUser.role === 'admin') fetchEnrollmentRequests();
     } catch (err) {
@@ -625,11 +630,13 @@ async function deleteAnnouncementBtn(id) {
 function updateScheduleCourseDropdown() {
     const select = document.getElementById('schedule-course');
     const gradeSelect = document.getElementById('grade-course');
+    const materialSelect = document.getElementById('material-course');
     const options = '<option value="" disabled selected>Select Course</option>' + 
         allCourses.map(c => `<option value="${c.id}">[${c.code}] ${c.title}</option>`).join('');
     
     if (select) select.innerHTML = options;
     if (gradeSelect) gradeSelect.innerHTML = options;
+    if (materialSelect) materialSelect.innerHTML = options;
 }
 
 function renderAdminSchedules() {
@@ -715,6 +722,67 @@ async function deleteScheduleBtn(id) {
         fetchAdminData();
     } catch (err) {
         console.error('Failed to delete schedule', err);
+    }
+}
+
+// Admin Materials
+function renderAdminMaterials() {
+    const tbody = document.getElementById('admin-materials-tbody');
+    if (!tbody) return;
+    tbody.innerHTML = allMaterials.map(m => {
+        const course = allCourses.find(c => c.id === m.courseId);
+        return `
+        <tr>
+            <td>${course ? course.code : 'Unknown'}</td>
+            <td>${m.title}</td>
+            <td><a href="${m.url}" target="_blank" style="color: #3b82f6;">View Link</a></td>
+            <td>
+                <button class="action-btn delete" onclick="deleteMaterialBtn(${m.id})">Delete</button>
+            </td>
+        </tr>
+    `}).join('');
+}
+
+async function saveMaterial(e) {
+    e.preventDefault();
+    const errorDiv = document.getElementById('material-error');
+    errorDiv.textContent = '';
+    
+    const payload = {
+        courseId: document.getElementById('material-course').value,
+        title: document.getElementById('material-title').value,
+        url: document.getElementById('material-url').value,
+        uploadedBy: currentUser.username
+    };
+
+    try {
+        const res = await fetch('/api/materials', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        
+        if (!res.ok) {
+            errorDiv.textContent = data.error || 'Failed to save material';
+            return;
+        }
+        
+        document.getElementById('material-form').reset();
+        fetchAdminData();
+    } catch (err) {
+        console.error('Failed to save material', err);
+        errorDiv.textContent = 'An error occurred';
+    }
+}
+
+async function deleteMaterialBtn(id) {
+    if (!confirm('Are you sure you want to delete this material?')) return;
+    try {
+        await fetch(`/api/materials/${id}`, { method: 'DELETE' });
+        fetchAdminData();
+    } catch (err) {
+        console.error('Failed to delete material', err);
     }
 }
 
@@ -940,10 +1008,11 @@ function renderMyCourses(myCourses, myGrades) {
                 <div class="card-icon">${c.icon}</div>
                 <h4>[${c.code}] ${c.title}</h4>
                 <p>Instructor: ${c.instructor}</p>
-                <div class="card-footer">
+                <div class="card-footer" style="display: flex; justify-content: space-between; align-items: center;">
                     <span class="status-badge ${c.enrollmentStatus.toLowerCase()}" style="padding: 4px 8px; border-radius: 4px; font-size: 0.8em; font-weight: 700; background: ${c.enrollmentStatus === 'approved' ? '#22c55e22' : c.enrollmentStatus === 'rejected' ? '#ef444422' : '#eab30822'}; color: ${c.enrollmentStatus === 'approved' ? '#22c55e' : c.enrollmentStatus === 'rejected' ? '#ef4444' : '#eab308'};">
                         ${c.enrollmentStatus.toUpperCase()}
                     </span>
+                    ${c.enrollmentStatus === 'approved' ? `<button onclick="openMaterialsModal(${c.id}, '${c.title}')" class="add-btn" style="padding: 4px 8px; font-size: 0.8em; margin: 0;">Materials</button>` : ''}
                 </div>
             </div>
         `).join('');
@@ -998,4 +1067,40 @@ async function saveGrade(e) {
     } catch (err) {
         console.error('Failed to submit grade', err);
     }
+}
+
+// Student Materials
+async function openMaterialsModal(courseId, courseTitle) {
+    document.getElementById('materials-modal-course-title').textContent = courseTitle;
+    const container = document.getElementById('materials-list-container');
+    container.innerHTML = '<div style="text-align:center; color:#94a3b8;">Loading materials...</div>';
+    document.getElementById('materials-modal').style.display = 'flex';
+
+    try {
+        const res = await fetch(`/api/materials/${courseId}`);
+        const materials = await res.json();
+        
+        if (materials.length === 0) {
+            container.innerHTML = '<div style="text-align:center; color:#94a3b8; padding: 20px;">No materials available for this course.</div>';
+            return;
+        }
+
+        container.innerHTML = materials.map(m => `
+            <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px; display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                    <strong style="color: #0f172a; display: block; margin-bottom: 4px;">${m.title}</strong>
+                    <span style="font-size: 0.8em; color: #64748b;">Uploaded by: ${m.uploadedBy} on ${new Date(m.date).toLocaleDateString()}</span>
+                </div>
+                <a href="${m.url}" target="_blank" class="add-btn" style="text-decoration: none; padding: 6px 12px; font-size: 0.85em;">View</a>
+            </div>
+        `).join('');
+    } catch (err) {
+        console.error('Failed to load materials', err);
+        container.innerHTML = '<div style="text-align:center; color:#ef4444;">Failed to load materials</div>';
+    }
+}
+
+function closeMaterialsModal(event) {
+    if (event && event.target.id !== 'materials-modal') return;
+    document.getElementById('materials-modal').style.display = 'none';
 }
