@@ -330,6 +330,15 @@ app.post('/api/quizzes/submit', (req, res) => {
     res.json({ message: 'Quiz submitted successfully', score, total: quiz.questions.length });
 });
 
+app.delete('/api/quizzes/:id', (req, res) => {
+    const quizId = parseInt(req.params.id);
+    const index = quizzes.findIndex(q => q.id === quizId);
+    if (index === -1) return res.status(404).json({ error: 'Quiz not found' });
+
+    quizzes.splice(index, 1);
+    res.json({ message: 'Quiz deleted successfully' });
+});
+
 // 7. Messaging (AGILE-Chat)
 const messages = [];
 let messageIdCounter = 1;

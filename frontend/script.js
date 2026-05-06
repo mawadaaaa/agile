@@ -402,6 +402,11 @@ async function fetchAdminData() {
         allSchedules = await resSchedules.json();
         allMaterials = await resMaterials.json();
         
+        // Fetch all quizzes for all courses to show in management table
+        const quizPromises = allCourses.map(c => fetch(`/api/quizzes/${c.id}`).then(r => r.json()));
+        const allQuizzesArrays = await Promise.all(quizPromises);
+        const flattenedQuizzes = allQuizzesArrays.flat();
+        
         updateScheduleCourseDropdown();
         
         renderAdminCourses();
@@ -409,6 +414,7 @@ async function fetchAdminData() {
         renderAdminAnnouncements();
         renderAdminSchedules();
         renderAdminMaterials();
+        renderAdminQuizzes(flattenedQuizzes);
         
         if (currentUser.role === 'admin') fetchEnrollmentRequests();
     } catch (err) {
@@ -1183,9 +1189,46 @@ async function saveQuiz(e) {
         document.getElementById('quiz-questions-container').innerHTML = '';
         questionCount = 0;
         alert('Quiz published successfully');
+        fetchAdminData(); // Refresh management table
     } catch (err) {
         console.error('Failed to save quiz', err);
         errorDiv.textContent = 'An error occurred';
+    }
+}
+
+function renderAdminQuizzes(quizzes) {
+    const tbody = document.getElementById('admin-quizzes-tbody');
+    if (!tbody) return;
+    
+    if (quizzes.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; color:#94a3b8; padding:20px;">No quizzes published yet</td></tr>';
+        return;
+    }
+
+    tbody.innerHTML = quizzes.map(q => {
+        const course = allCourses.find(c => c.id === q.courseId);
+        return `
+            <tr>
+                <td>${course ? course.code : 'Unknown'}</td>
+                <td>${q.title}</td>
+                <td>${q.questions.length} Questions</td>
+                <td>
+                    <button class="action-btn delete" onclick="deleteQuizBtn(${q.id})">Delete</button>
+                </td>
+            </tr>
+        `;
+    }).join('');
+}
+
+async function deleteQuizBtn(id) {
+    if (!confirm('Are you sure you want to delete this quiz?')) return;
+    try {
+        const res = await fetch(`/api/quizzes/${id}`, { method: 'DELETE' });
+        if (res.ok) {
+            fetchAdminData();
+        }
+    } catch (err) {
+        console.error('Failed to delete quiz', err);
     }
 }
 
