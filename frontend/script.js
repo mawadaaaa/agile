@@ -1259,7 +1259,7 @@ async function openStudentQuizzesModal(courseId, courseTitle) {
     document.getElementById('student-quizzes-modal').style.display = 'flex';
 
     try {
-        const res = await fetch(\`/api/quizzes/\${courseId}\`);
+        const res = await fetch(`/api/quizzes/${courseId}`);
         const quizzes = await res.json();
         
         if (quizzes.length === 0) {
@@ -1267,15 +1267,15 @@ async function openStudentQuizzesModal(courseId, courseTitle) {
             return;
         }
 
-        container.innerHTML = quizzes.map(q => \`
+        container.innerHTML = quizzes.map(q => `
             <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px; display: flex; justify-content: space-between; align-items: center;">
                 <div>
-                    <strong style="color: #0f172a; display: block; margin-bottom: 4px;">\${q.title}</strong>
-                    <span style="font-size: 0.8em; color: #64748b;">By \${q.createdBy} • \${q.questions.length} questions</span>
+                    <strong style="color: #0f172a; display: block; margin-bottom: 4px;">${q.title}</strong>
+                    <span style="font-size: 0.8em; color: #64748b;">By ${q.createdBy} • ${q.questions.length} questions</span>
                 </div>
-                <button onclick='startQuiz(\${JSON.stringify(q).replace(/'/g, "&#39;")})' class="add-btn" style="padding: 6px 12px; font-size: 0.85em; background: #8b5cf6;">Take Quiz</button>
+                <button onclick='startQuiz(${JSON.stringify(q).replace(/'/g, "&#39;")})' class="add-btn" style="padding: 6px 12px; font-size: 0.85em; background: #8b5cf6;">Take Quiz</button>
             </div>
-        \`).join('');
+        `).join('');
     } catch (err) {
         console.error('Failed to load quizzes', err);
         container.innerHTML = '<div style="text-align:center; color:#ef4444;">Failed to load quizzes</div>';
@@ -1294,17 +1294,17 @@ function startQuiz(quiz) {
     document.getElementById('take-quiz-title').textContent = quiz.title;
     const container = document.getElementById('take-quiz-questions-container');
     
-    container.innerHTML = quiz.questions.map((q, idx) => \`
+    container.innerHTML = quiz.questions.map((q, idx) => `
         <div style="margin-bottom: 15px; padding: 15px; background: #f1f5f9; border-radius: 8px;">
-            <p style="font-weight: 600; margin-bottom: 10px;">\${idx + 1}. \${q.text}</p>
-            \${q.options.map((opt, optIdx) => \`
+            <p style="font-weight: 600; margin-bottom: 10px;">${idx + 1}. ${q.text}</p>
+            ${q.options.map((opt, optIdx) => `
                 <label style="display: block; margin-bottom: 5px; cursor: pointer;">
-                    <input type="radio" name="q\${idx}" value="\${optIdx}" required style="margin-right: 8px;">
-                    \${opt}
+                    <input type="radio" name="q${idx}" value="${optIdx}" required style="margin-right: 8px;">
+                    ${opt}
                 </label>
-            \`).join('')}
+            `).join('')}
         </div>
-    \`).join('');
+    `).join('');
     
     document.getElementById('take-quiz-modal').style.display = 'flex';
 }
@@ -1321,7 +1321,7 @@ async function submitQuiz(e) {
     const answers = [];
     let allAnswered = true;
     currentTakingQuiz.questions.forEach((_, idx) => {
-        const selected = document.querySelector(\`input[name="q\${idx}"]:checked\`);
+        const selected = document.querySelector(`input[name="q${idx}"]:checked`);
         if (selected) {
             answers.push(parseInt(selected.value));
         } else {
@@ -1347,7 +1347,7 @@ async function submitQuiz(e) {
         
         const data = await res.json();
         if (res.ok) {
-            alert(\`Quiz submitted! You scored \${data.score} out of \${data.total}\`);
+            alert(`Quiz submitted! You scored ${data.score} out of ${data.total}`);
             closeTakeQuizModal();
             fetchMyCourses(); // refresh grades
         } else {
