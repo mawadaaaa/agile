@@ -66,9 +66,21 @@ function loginSuccess(user) {
     // Role-based Navigation
     if (user.role === 'admin') {
         document.getElementById('nav-admin').style.display = 'inline-block';
+        document.getElementById('nav-admin').textContent = 'Admin Dashboard';
         document.getElementById('nav-my-courses').style.display = 'none';
+        
+        // Admin-only panels
         if (document.getElementById('enrollment-requests-panel')) document.getElementById('enrollment-requests-panel').style.display = 'block';
+        if (document.getElementById('admin-courses-panel')) document.getElementById('admin-courses-panel').style.display = 'block';
+        if (document.getElementById('admin-staff-panel')) document.getElementById('admin-staff-panel').style.display = 'block';
+        if (document.getElementById('admin-announcements-panel')) document.getElementById('admin-announcements-panel').style.display = 'block';
+        if (document.getElementById('admin-scheduling-panel')) document.getElementById('admin-scheduling-panel').style.display = 'block';
+        
+        // Hide Professor panels from Admin (to keep it clean)
         if (document.getElementById('admin-gradebook-section')) document.getElementById('admin-gradebook-section').style.display = 'none';
+        if (document.getElementById('admin-materials-section')) document.getElementById('admin-materials-section').style.display = 'none';
+        if (document.getElementById('admin-quizzes-section')) document.getElementById('admin-quizzes-section').style.display = 'none';
+
     } else if (user.role === 'student') {
         document.getElementById('nav-admin').style.display = 'none';
         document.getElementById('nav-my-courses').style.display = 'inline-block';
@@ -76,10 +88,18 @@ function loginSuccess(user) {
         document.getElementById('nav-admin').style.display = 'inline-block';
         document.getElementById('nav-admin').textContent = 'Professor Dashboard';
         document.getElementById('nav-my-courses').style.display = 'none';
+        
+        // Professor panels
         if (document.getElementById('admin-gradebook-section')) document.getElementById('admin-gradebook-section').style.display = 'block';
         if (document.getElementById('admin-materials-section')) document.getElementById('admin-materials-section').style.display = 'block';
         if (document.getElementById('admin-quizzes-section')) document.getElementById('admin-quizzes-section').style.display = 'block';
+        
+        // Hide Admin-only panels from Professors
         if (document.getElementById('enrollment-requests-panel')) document.getElementById('enrollment-requests-panel').style.display = 'none';
+        if (document.getElementById('admin-courses-panel')) document.getElementById('admin-courses-panel').style.display = 'none';
+        if (document.getElementById('admin-staff-panel')) document.getElementById('admin-staff-panel').style.display = 'none';
+        if (document.getElementById('admin-announcements-panel')) document.getElementById('admin-announcements-panel').style.display = 'none';
+        if (document.getElementById('admin-scheduling-panel')) document.getElementById('admin-scheduling-panel').style.display = 'none';
     } else {
         document.getElementById('nav-admin').style.display = 'none';
         document.getElementById('nav-my-courses').style.display = 'none';
